@@ -1,0 +1,481 @@
+#!/bin/bash
+
+
+# defaults. They can be overwritten by command line parameters
+verbosity=3  # 1=least verbose, 3=most verbose
+dry_run="yes"
+vmname="testvm"
+
+
+use_colors="yes"
+windows_iso="/usr/bin/w"
+sqlserver_iso="/usr/bin/sort"
+builder_iso="/bin/bzip2"
+virtio_iso="/usr/bin/vi"
+
+
+
+# shows the users the script's syntax
+function show_help()
+{
+	cat <<EOF
+Syntax: `basename $0` <options>
+
+Available options:
+--windows-iso /path/to/windows_iso_kit		- specifies the location of the Windows iso image
+--builder-iso /path/to/builder_iso_kit		- specifies the location of the builder iso image
+--sqlserver-iso /path/to/sqlserver_iso_kit	- specifies the location of the SQLServer iso image
+--virtio-iso /path/to/virtio_iso_kit		- specifies the path to the virtio iso image
+--dry-run					- run but don't make any changes
+--verbosity verbosity_level			- verbosity level is an interger between 1-3, with 1
+						  being the least verbose and 3 being the most verbose
+--use-colors {yes|no}				- should the script display colors or not
+--help						- shows this message
+EOF
+}
+
+
+
+# sets the appropiate color values based on $use_colors
+function set_colors()
+{
+	if [ "$use_colors" == "yes" ];
+	then
+		txtred='\e[0;31m' # Red
+		txtgrn='\e[0;32m' # Green
+		txtylw='\e[0;33m' # Yellow
+		txtblu='\e[0;34m' # Blue
+		txtpur='\e[0;35m' # Purple
+		txtcyn='\e[0;36m' # Cyan
+		txtwht='\e[0;37m' # White
+		bldblk='\e[1;30m' # Black - Bold
+		bldred='\e[1;31m' # Red
+		bldgrn='\e[1;32m' # Green
+		bldylw='\e[1;33m' # Yellow
+		bldblu='\e[1;34m' # Blue
+		bldpur='\e[1;35m' # Purple
+		bldcyn='\e[1;36m' # Cyan
+		bldwht='\e[1;37m' # White
+		txtrst='\e[0m'    # Text Reset
+	else
+		txtred=''
+		txtgrn=''
+		txtylw=''
+		txtblu=''
+		txtpur=''
+		txtcyn=''
+		txtwht=''
+		bldblk=''
+		bldred=''
+		bldgrn=''
+		bldylw=''
+		bldblu=''
+		bldpur=''
+		bldcyn=''
+		bldwht=''
+		txtrst=''
+	fi
+}
+
+
+
+# checks what operating system this is
+function get_os()
+{
+	info 2 "Checking what OS this is"
+	os_type=""
+
+	info 3 "Checking if this is a Linux system"
+	[ "`uname -s`" == "Linux" ] && os_type="Linux"
+
+	info 3 "Checking if this is an OSX system"
+	[ "`uname -s`" == "Darwin" ] && os_type="OSX"
+
+
+	if [ -z "$os_type" ];
+	then
+		error 1 "This is neither a Linux nor an OSX operating system. Exiting..."
+		exit 1
+	fi
+	info 3 "Operating system is ${bldylw}${os_type}${txtrst}"
+}
+
+
+
+# parses the command line parameters
+function parse_parameters()
+{
+
+	# treat the "--help" parameter here, so that we don't display the "Parsing..." message in case the user just wants help
+	if [ "$1" == "--help" -o "$1" == "-h" ];
+	then
+		show_help
+		exit 0
+	fi
+
+	#info 2 "Parsing command line parameters"
+
+	until [ $# -eq 0 ];
+	do
+		case $1 in
+		"--use-colors")
+			shift
+			use_colors=$1
+			set_colors
+			shift
+			info 3 "Got ${bldylw}use-colors${txtrst} = ${use_colors}"
+			;;
+		"--verbosity"|"-v")
+			shift
+			verbosity=$1
+			shift
+			info 3 "Got verbosity level parameter ${bldylw}${verbosity}${txtrst}"
+			;;
+		"--windows-iso")
+			shift
+			windows_iso=$1
+			shift
+			info 3 "Got ${bldylw}windows-iso${txtrst} parameter = ${windows_iso}"
+			;;
+		"--sqlserver-iso")
+			shift
+			sqlserver_iso=$1
+			shift
+			info 3 "Got ${bldylw}sqlserver-iso${txtrst} parameter = ${sqlserver_iso}"
+			;;
+		"--builder-iso")
+			shift
+			builder_iso=$1
+			shift
+			info 3 "Got ${bldylw}builder-iso${txtrst} parameter = ${builder_iso}"
+			;;
+		"--virtio-iso")
+			shift
+			virtio_iso=$1
+			shift
+			info 3 "Got ${bldylw}virtio-iso${txtrst} parameter = ${virtio_iso}"
+			;;
+		"--help"|"-h")
+			show_help
+			shift
+			exit 0
+			;;
+		"--dry-run"|"-d")
+			shift
+			dry_run="yes"
+			info 3 "Got ${bldylw}dry-run${txtrst} parameter = ${dry_run}"
+			;;
+		*)
+			error 1 "Unknown parameter $1 ... Exiting"
+			exit 1
+		esac
+	done
+}
+
+
+
+# check if we are connected to the Internet
+function validate_net_connectivity()
+{
+	info 2 "Checking Internet connectivity..."
+	info 3 "Pinging 8.8.8.8"
+
+	ping -c 3 8.8.8.8 1>/dev/null 2>/dev/null
+	local ping_retcode=$?
+
+	if [ ${ping_retcode} -eq 0 ];
+	then
+		info 3 "We are online"
+	else
+		error 1 "We are offline"
+		exit 1
+	fi
+}
+
+
+
+# check if the script's prerequisites are met
+function validate_prerequisites()
+{
+	info 2 "Checking prerequisites"
+
+	# check if we are root
+	info 3 "Checking if we're run as root"
+	if [ "`whoami`" != "root" ];
+	then
+		error 1 "This script needs to be run as root. Exiting..."
+		exit 1
+	fi
+
+	# check if virtualbox is installed
+	info 3 "Checking if virtualbox is installed"
+	which virtualbox >/dev/null
+	if [ $? -ne 0 ];
+	then
+		error 1 "virtualbox is not installed. Exiting..."
+		exit 1
+	fi
+
+	# check if VBoxManage is installed
+	info 3 "Checking if VBoxManage is installed"
+	which VBoxManage >/dev/null
+	if [ $? -ne 0 ];
+	then
+		error 1 "VBoxManage is not installed. Exiting..."
+		exit 1
+	fi
+
+	# check if mkfs.vfat is installed
+	info 3 "Checking if mkfs.vfat is installed"
+	which mkfs.vfat >/dev/null
+	if [ $? -ne 0 ];
+	then
+		error 1 "mkfs.vfat is not installed. Exiting..."
+		exit 1
+	fi
+
+	# check if windows_iso exists
+	info 3 "Checking if Windows iso exists"
+	if [ ! -e "${windows_iso}" ];
+	then
+		error 1 "Cannot find Windows image in : ${windows_iso}"
+		exit 1
+	else
+		info 3 "Found Windows image in : ${windows_iso}"
+	fi
+
+	# check if sqlserver_iso exists
+	info 3 "Checking if SQLServer iso exists"
+	if [ ! -e "${sqlserver_iso}" ];
+	then
+		error 1 "Cannot find SQLServer image in : ${sqlserver_iso}"
+		exit 1
+	else
+		info 3 "Found SQLServer image in : ${sqlserver_iso}"
+	fi
+
+	# check if builder_iso exists
+	info 3 "Checking if builder iso exists"
+	if [ ! -e "${builder_iso}" ];
+	then
+		error 1 "Cannot find builder image in : ${builder_iso}"
+		exit 1
+	else
+		info 3 "Found builder image in : ${builder_iso}"
+	fi
+
+	# check if virtio_iso exists
+	info 3 "Checking if virtio iso exists"
+	if [ ! -e "${virtio_iso}" ];
+	then
+		error 1 "Cannot find virtio image in : ${virtio_iso}"
+		exit 1
+	else
+		info 3 "Found virtio image in : ${virtio_iso}"
+	fi
+
+	info 3 "Done checking prerequisites"
+}
+
+
+
+# check if needed environment variables are set, exit if not
+function validate_environment_vars()
+{
+	info 2 "Checking if environment variables are defined"
+
+	info 3 "Checking OS_TENANT_NAME"
+	if [ -z ${OS_TENANT_NAME+x} ];
+	then
+		error 1 "The environment variable ${bldylw}OS_TENANT_NAME${txtrst} is not set. Exiting..."
+		exit 1
+	fi
+	info 3 "${bldylw}OS_TENANT_NAME${txtrst}=$OS_TENANT_NAME"
+
+	info 3 "Checking OS_USERNAME"
+	if [ -z ${OS_USERNAME+x} ];
+	then
+		error 1 "The environment variable ${bldylw}OS_USERNAME${txtrst} is not set. Exiting..."
+		exit 1
+	fi
+	info 3 "${bldylw}OS_USERNAME${txtrst}=$OS_USERNAME"
+
+	info 3 "Checking OS_PASSWORD"
+	if [ -z ${OS_PASSWORD+x} ];
+	then
+		error 1 "The environment variable ${bldylw}OS_PASSWORD${txtrst} is not set. Exiting..."
+		exit 1
+	fi
+	info 3 "${bldylw}OS_PASSWORD${txtrst}=$OS_PASSWORD"
+
+	info 3 "Checking OS_REGION_NAME"
+	if [ -z ${OS_REGION_NAME+x} ];
+	then
+		error 1 "The environment variable ${bldylw}OS_REGION_NAME${txtrst} is not set. Exiting..."
+		exit 1
+	fi
+	info 3 "${bldylw}OS_REGION_NAME${txtrst}=$OS_REGION_NAME"
+
+	info 3 "Done checking environment variables"
+}
+
+
+
+# shows a green info message
+# Syntax:
+# info verbositylevel "message"
+# or, you can give the error message as stdin:
+# cat file | info verbositylevel
+function info()
+{
+	# get the verbosity of the message
+	local info_verbosity=$1
+	shift
+
+	# exit the function if the verbosity if greater than the global defined verbosity
+	if [ $info_verbosity -gt $verbosity ];
+	then
+		return 1
+	fi
+
+	# we use this later, for stdin parsing
+	local outputline
+
+	# check the number of parameters in order to see if the message is comming from stdin or as arguments to the function
+	if [ $# -eq 0 ];
+	then
+		# the message comes from stdin, go trough it and echo it out
+		echo -e "`date '+%T %D'`${bldgrn} INFO: ${txtrst}(output follows)"
+		while read outputline;
+		do
+			echo $outputline
+		done
+	else
+		# the message is passed as parameters to the function
+		echo -e "`date '+%T %D'`${bldgrn} INFO: ${txtrst}$*"
+	fi
+}
+
+
+
+# shows a red error message
+# Syntax:
+# error verbositylevel "message"
+# or, you can give the error message as stdin:
+# cat file | error verbositylevel
+function error()
+{
+	# get the verbosity of the message
+	local error_verbosity=$1
+	shift
+
+	# exit the function if the verbosity if greater than the global defined verbosity
+	if [ $error_verbosity -gt $verbosity ];
+	then
+		return 1
+	fi
+
+	# we use this later, for stdin parsing
+	local outputline
+
+	# check the number of parameters in order to see if the message is comming from stdin or as arguments to the function
+	if [ $# -eq 0 ];
+	then
+		# the message comes from stdin, go trough it and echo it out
+		echo -e "`date '+%T %D'`${bldred} ERROR: ${txtrst}(output follows)"
+		while read outputline;
+		do
+			echo $outputline
+		done
+	else
+		# the message is passed as parameters to the function
+		echo -e "`date '+%T %D'`${bldred} ERROR: ${txtrst}$*"
+	fi
+}
+
+
+
+# runs a parameter specified command and based on the verbosity level, shows or hides the output
+# Syntax: run verbositylevel "command with arguments"
+function run()
+{
+	# get the verbosity for the run output
+	local run_verbosity=$1
+	shift
+
+	# 
+	info 1 "Running: \"$*\""
+
+	# is the run verbosity greater than the global one ?
+	if [ ${run_verbosity} -gt ${verbosity} ];
+	then
+		# if not dry_run, run the command and redirect the output to /dev/null
+		[ "${dry_run}" != "yes" ] && $* 1>/dev/null
+	else
+		# if not dry_run, run the command, leave the output on stdout
+		[ "${dry_run}" != "yes" ] && $*
+	fi
+}
+
+
+
+# creates the windows image in virtualbox. FIXME: test it
+function run_virtualbox()
+{
+
+	if [ -e ~/workspace/win-image-builder/vbox/${vmname}/${vmname}.vdi ]
+	then
+		info 2 "unregister & delete harddisk"
+		vboxmanage closemedium disk ~/workspace/win-image-builder/vbox/${vmname}/${vmname}.vdi --delete
+	fi
+
+	info 3 "Create VM and register with VirtualBox"
+	run 2 VBoxManage createvm --name ${vmname} --register --ostype Windows2012_64 --basefolder ~/workspace/win-image-builder/vbox
+
+	info 3 "Create disk"
+	run 2 VBoxManage createhd --filename ~/workspace/win-image-builder/vbox/${vmname}/${vmname}.vdi --size 25000 --variant standard
+
+	info 3 "Create storage controller (for disk & CDROM)"
+	run 2 VBoxManage storagectl ${vmname} --name "IDE" --add ide --controller PIIX4
+
+	info 3 "Attach disk"
+	run 2 VBoxManage storageattach ${vmname} --storagectl "IDE" --port 0 --device 1 --type hdd --medium  ~/workspace/win-image-builder/vbox/${vmname}/${vmname}.vdi
+
+	info 3 "Create floppy controller"
+	run 2 VBoxManage storagectl ${vmname} --name "Floppy" --add floppy
+
+	info 3 "Attach unattend.img to floppy controller"
+	run 2 VBoxManage storageattach ${vmname} --storagectl "Floppy" --port 0 --device 0 --type fdd --medium ~/workspace/win-image-builder/input/unattend.img
+
+	info 3 "Create storage controller (for disk & CDROM)"
+	run 2 VBoxManage storagectl ${vmname} --name "SATA" --add sata --controller IntelAHCI --portcount 4
+
+	info 3 "Attach ISO to DVD"
+	run 2 VBoxManage storageattach ${vmname} --storagectl "SATA" --port 0 --type dvddrive --medium ${windows_iso}
+	run 2 VBoxManage storageattach ${vmname} --storagectl "SATA" --port 1 --type dvddrive --medium ${builder_iso}
+	run 2 VBoxManage storageattach ${vmname} --storagectl "SATA" --port 2 --type dvddrive --medium ${virtio_iso}
+
+	run 2 VBoxManage sharedfolder add ${vmname} --name output --hostpath ~/workspace/win-image-builder/output --automount
+
+	run 2 VBoxManage modifyvm ${vmname} --boot1 disk
+	run 2 VBoxManage modifyvm ${vmname} --boot2 dvd
+	run 2 VBoxManage modifyvm ${vmname} --boot3 none
+	run 2 VBoxManage modifyvm ${vmname} --boot4 none
+
+	run 2 VBoxManage modifyvm ${vmname} --nic1 bridged --cableconnected1 on --bridgeadapter1 en0
+	run 2 VBoxManage modifyvm ${vmname} --memory 4096
+	run 2 VBoxManage modifyvm ${vmname} --clipboard bidirectional
+
+	run 2 VBoxManage startvm ${vmname}
+
+	#run 2 VBoxManage guestcontrol  ${vmname} updateadditions --source /Applications/VirtualBox.app/Contents/MacOS/VBoxGuestAdditions.iso --verbose
+
+}
+
+parse_parameters $*
+set_colors
+validate_environment_vars
+validate_net_connectivity
+validate_prerequisites
+get_os
+
