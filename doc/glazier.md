@@ -17,7 +17,7 @@ Glazier
 
 ##Glazier profiles
 
-A profile contains all the necessary resource needed to specialize a windows installation. Glazier profiles are made available to the glazier vm through the builder iso.
+A profile contains all the necessary resources needed to specialize a windows installation. Glazier profiles are made available to the glazier vm through the builder iso.
 
 Directory structure of a glazier profile:
 
@@ -31,7 +31,9 @@ Directory structure of a glazier profile:
 ```
 
 - `features.csv` is a CSV file that contains the desired status of each available windows feature
+
 > Example
+
 ```csv
 Feature,Core,Standard,Desired
 NetFx4ServerFeatures,Enabled,Enabled,Enabled
@@ -51,7 +53,9 @@ IIS-FTPServer,Disabled,Disabled,Removed
 ```
 
 - `resources.csv` is a CSV file that contains a list of resources that will be placed on the final image; each resource is saved to the to `%HOMEDRIVE%`; the directory path is created if it doesn't exist
+
 > Example
+
 ```csv
 \installers\product.zip,http://download.domain.com/product.zip
 ```
@@ -63,7 +67,9 @@ tool.zip,http://download.domain.com/tool.zip
 ```
 
 - `specialize.ps1` is a PowerShell script that will run as one of the last steps on the `temp instance`
+
 > Example
+
 ```powershell
 # Open firewall port 80
 New-NetFirewallRule -DisplayName 'Allow HTTP' -Direction Inbound -LocalPort 80 -Protocol TCP -Action Allow
