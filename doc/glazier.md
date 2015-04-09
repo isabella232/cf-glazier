@@ -9,6 +9,7 @@ Glazier
 - `temp instance` - a nova instance of the `temp image`; it runs the windows setup in unattended mode
 - `prepped image` - after `temp image` reaches a shutoff state, it's snapshot in glance is the `prepped image`
 - `final image` - the `final image` is a glance snapshot of the `prepped image`, with any additional resources copied over
+- `resource push vm` - a nova instance of a `prepped image` or `final image`; it is booted so resources are downloaded on it; it gets snapshot into a `final image`
 
 ##Flow
 
@@ -70,16 +71,45 @@ New-NetFirewallRule -DisplayName 'Allow HTTP' -Direction Inbound -LocalPort 80 -
 
 ##create-glazier
 
-###arguments
+> bash script that needs to work on Linux and OSX (Windows git bash is a nice-to-have)
+
+It generates a `builder.iso` that contains all the specified `glazier profiles` specified in arguments, a CSV file containing all OS_* env vars, and a CSV file with a list of all args passed to create-glazier.
+
+It generates an `unattend.xml` file that installs Windows and runs a script when it's done.
+
+It creates a `glazier vm` by generating a vbox configuration file and boots it using `VBoxManage`. The `glazier vm` will have all ISOs mounted in a predictable order, so the drive letters available in the guest os are consistent each time the `glazier vm` is booted.
+
+###The unattend.xml file
+
+###Arguments
 
 - `--windows-iso` - required - path to Windows ISO; image file name is validated to be of the right version and localization (we only support EN-US)
 - `--with-sql-server` - optional - can be `none`, `2012` or `2014`; by default, it's `none`
 - `--sql-server-iso` - if `--with-sql-server` is specified, this argument is required; it needs to point to a SQL Server ISO that is the correct version
 - `--virtio-iso` - required - path to a virtio iso file
 - `--profile` - optional - path to a `glazier profile`; the directory needs to have the correct structure; this parameter can be specified multiple times; all the specified profiles will be part of the `builder.iso` and made available to `new-image` in the `glazier vm`
+- `--vm-path` - optional - path to a directory where VBox files will be saved; by default, the files will be saved to ~/.glazier
+- `--product-key` - required - windows product key used to activate the `glazier vm`
 
-##new-image
+##New-Image
 
-##initialize-image
+##Initialize-Image
 
-##push-resources
+##Push-Resources
+
+> PowerShell commandlet
+
+Push-Resources generates a PowerShell script suitable as a cloud-init script using the `resources.csv` of a `glazier profile`. The cloud init script downloads resources from the internet and saves them to their proper location. It also uses an HTTP(S) proxy if one is provided.
+
+Once the cloud-init script is created, it boots a `prepped image` or a `final image` using nova boot and the generated script as user data. After booting the VM, the command waits until the VM is in a `SHUTOFF` state.
+
+Once the `resource push vm` is shutoff, the command snapshots the VM.
+
+###Arguments
+
+- `-HttpProxy` - optional, specifies an proxy to be used when downloading resources
+- `-HttpsProxy` - optional, specifies an proxy to be used when downloading resources
+- `-GlazierProfile` - required, specifies a path to a glazier profile whose `resources.csv` will be used to determine the list of items to be downloaded in the `resource push vm`
+- `-SourceImageName` - either this or `SourceImageId` must be present; specifies a `prepped image` or `final image` to be booted so resources are downloaded on it
+- `-SourceImageId` - either this or `SourceImageName` must be specified; specifies a `prepped image` or `final image` to be booted so resources are downloaded on it
+- `-SnapshotImageName` - required; the name of the `final image` that will be snapshot once resources are downloaded and the `resource push vm` is shutoff
