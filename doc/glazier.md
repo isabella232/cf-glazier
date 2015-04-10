@@ -57,12 +57,14 @@ IIS-FTPServer,Disabled,Disabled,Removed
 > Example
 
 ```csv
+path,uri
 \installers\product.zip,http://download.domain.com/product.zip
 ```
 
 - `tools.csv` is a CSV file containing all required tools so that for your specialize script;
 > Example
 ```csv
+name,uri
 tool.zip,http://download.domain.com/tool.zip
 ```
 
