@@ -5,17 +5,16 @@
 verbosity=3  # 1=least verbose, 3=most verbose
 dry_run="no"
 vmname="testvm"
-vmpath="/tmp/.glazier"
+vmpath="~/.glazier"
 productkey=""
 use_colors="yes"
-windows_iso="/tmp/en_windows_server_2012_r2_with_update_x64_dvd_6052708.iso"
-sqlserver_iso="/tmp/en_windows_server_2012_r2_with_update_x64_dvd_6052708.iso"
-builder_iso="/bin/bzip2"
+windows_iso="~/Downloads/en_windows_server_2012_r2_with_update_x64_dvd_6052708.iso"
+sqlserver_iso="~/Downloads/en_windows_server_2012_r2_with_update_x64_dvd_6052708.iso"
 virtio_iso="/usr/bin/vi"
 profiles=""
 sqlserverversion="none"
 bridgeadapter="eth0"
-
+assetsdir="${vmpath}/assets"
 
 # shows the users the script's syntax
 function show_help()
@@ -25,7 +24,6 @@ Syntax: `basename $0` <options>
 
 Available options:
 --windows-iso /path/to/windows_iso_kit		- specifies the location of the Windows iso image
---builder-iso /path/to/builder_iso_kit		- specifies the location of the builder iso image
 --sql-server-iso /path/to/sqlserver_iso_kit	- specifies the location of the SQLServer iso image
 --virtio-iso /path/to/virtio_iso_kit		- specifies the path to the virtio iso image
 --profile PATH					- (optional) path to a glazier profile directory.
@@ -33,7 +31,7 @@ Available options:
 --vm-path PATH					- (optional) path to a directory where VBox files will
 						  be saved. The default is ~/.glazier
 --with-sql-server {none|2012|2014}		- if this is set, you also have to set --sql-server-iso
---product-key KEY				- Windoes product key
+--product-key KEY				- Windows product key
 --bridgeadapter					- network interface to bridge to the vm (default:eth0)
 --dry-run					- run but don't make any changes
 --verbosity verbosity_level			- verbosity level is an interger between 1-3, with 1
@@ -217,10 +215,42 @@ function parse_parameters()
 function create_vfd()
 {
 #FIXME: this needs testing on both oses
+
+	info 2 "Creating floppy"
+
 	case "$os_type" in
 	"Linux")
-		dd if=/dev/zero of=${vmpath}/input/unattend.img
-		mkfs.vfat ${vmpath}/input/unattend.img
+		# check if $vmpath/floppy exists, if not, create it
+		if [ ! -d "$vmpath/floppy" ];
+		then
+			mkdir -p "$vmpath/floppy"
+		fi
+
+		# create a 2MB empty file
+		info 3 "Creating empty floppy image file"
+		run 3 dd if=/dev/zero of=${vmpath}/unattend.img bs=1024 count=2048
+
+		# make a vfat filesystem
+		info 3 "Formatting the floppy image with vfat filesystem"
+		run 3 mkfs.vfat ${vmpath}/unattend.img
+		
+		# mount the floppy, we need  for this
+		info 3 "Mounting the floppy image"
+		run 3 mount -t vfat ${vmpath}/unattend.img ${vmpath}/floppy
+
+		# recursively copy all assets
+		info 3 "Copying assets to the floppy drive"
+		run 3 cp -R ${assetsdir}/* ${vmpath}/floppy
+
+		# unmount the image
+		info 3 "Unmounting the floppy image"
+		# sleep for a while to let the system close the copying process gracefully
+		sleep 3
+		run 3 umount ${vmpath}/floppy
+
+		# removing the 'floppy' directory
+		info 3 "Removing floppy directory"
+		run 3 "rm -rf ${vmpath}/floppy"
 		;;
 	"OSX")
 		hdiutil create -megabytes 2 -fs MS-DOS ${vmpath}/input/unattend.img
@@ -257,7 +287,7 @@ function validate_prerequisites()
 
 	# check if we are root
 	info 3 "Checking if we're run as root"
-	if [ "`whoami`" != "mcalin" ];
+	if [ "`whoami`" != "root" ];
 	then
 		error 1 "This script needs to be run as root. Exiting..."
 		exit 1
@@ -342,6 +372,21 @@ function validate_prerequisites()
 		exit 1
 	fi
 
+	# check if virtualbox's directory exists
+	info 3 "Checking if virtualbox 'vbox' directory exists"
+	if [ ! -d "${vmpath}/vbox" ];
+	then
+		info 3 "It doesn't exist, create it"
+		run 3 mkdir -p ${vmpath}/vbox
+	fi
+
+	info 3 "Checking if virtualbox 'vbox' directory exists"
+	if [ ! -d "${vmpath}/output" ];
+	then
+		info 3 "It doesn't exist, create it"
+		run 3 mkdir -p ${vmpath}/output
+	fi
+
 	info 3 "Done checking prerequisites"
 }
 
@@ -403,28 +448,28 @@ function validate_windows_image()
 	info 2 "Validating Windows iso version"
 	if [ -z "`echo $windows_iso_name | grep -i en`" ];
 	then
-		error 1 "The Windows iso doesen't seem to be an english version. Exiting..."
+		error 1 "The Windows iso doesn't seem to be an english version. Exiting..."
 		exit 1
 	fi
 
 
 	if [ -z "`echo $windows_iso_name | grep 2012`" ];
 	then
-		error 1 "The Windows iso doesen't seem to be a 2012 version. Exiting..."
+		error 1 "The Windows iso doesn't seem to be a 2012 version. Exiting..."
 		exit 1
 	fi
 
 
 	if [ -z "`echo $windows_iso_name | grep -i x64`" ];
 	then
-		error 1 "The Windows iso doesen't seem to be a 64bit version. Exiting..."
+		error 1 "The Windows iso doesn't seem to be a 64bit version. Exiting..."
 		exit 1
 	fi
 
 
 	if [ -z "`echo $windows_iso_name | grep -i iso$`" ];
 	then
-		error 1 "The Windows iso provided doesen't seem to be an iso volume. Exiting..."
+		error 1 "The Windows iso provided doesn't seem to be an iso volume. Exiting..."
 		exit 1
 	fi
 
@@ -588,6 +633,19 @@ function run()
 
 
 
+# expands variables that contain paths (from ~ to /home/user, for example)
+function expand_paths()
+{
+	# virtualbox seems to get confused about paths containing "~"
+	eval vmpath=${vmpath}
+	eval windows_iso=${windows_iso}
+	eval sqlserver_iso=${sqlserver_iso}
+	eval virtio_iso=${virtio_iso}
+	eval assetsdir=${assetsdir}
+}
+
+
+
 # creates the windows image in virtualbox. FIXME: test it
 function run_virtualbox()
 {
@@ -621,18 +679,19 @@ function run_virtualbox()
 
 	info 3 "Attach ISO to DVD"
 	run 2 VBoxManage storageattach ${vmname} --storagectl "SATA" --port 0 --type dvddrive --medium ${windows_iso}
-	run 2 VBoxManage storageattach ${vmname} --storagectl "SATA" --port 1 --type dvddrive --medium ${builder_iso}
+#	run 2 VBoxManage storageattach ${vmname} --storagectl "SATA" --port 1 --type dvddrive --medium ${builder_iso}
 	run 2 VBoxManage storageattach ${vmname} --storagectl "SATA" --port 2 --type dvddrive --medium ${virtio_iso}
 
 	run 2 VBoxManage sharedfolder add ${vmname} --name output --hostpath ${vmpath}/output --automount
 
-	run 2 VBoxManage modifyvm ${vmname} --boot1 dvd
-	run 2 VBoxManage modifyvm ${vmname} --boot2 disk
+	run 2 VBoxManage modifyvm ${vmname} --boot1 disk
+	run 2 VBoxManage modifyvm ${vmname} --boot2 dvd
 	run 2 VBoxManage modifyvm ${vmname} --boot3 none
 	run 2 VBoxManage modifyvm ${vmname} --boot4 none
 
 	info 3 "Bridging eth0 to the virtual machine's network adapter"
-	run 2 VBoxManage modifyvm ${vmname} --nic1 bridged --cableconnected1 on --bridgeadapter1 ${bridgeadapter}
+#	run 2 VBoxManage modifyvm ${vmname} --nic1 bridged --cableconnected1 on --bridgeadapter1 ${bridgeadapter}
+	run 2 VBoxManage modifyvm ${vmname} --nic1 nat --cableconnected1 on
 	run 2 VBoxManage modifyvm ${vmname} --memory 4096
 	run 2 VBoxManage modifyvm ${vmname} --clipboard bidirectional
 
@@ -642,12 +701,17 @@ function run_virtualbox()
 
 }
 
+
+
+
 parse_parameters $*
+expand_paths
 set_colors
 get_os
 validate_environment_vars
 validate_net_connectivity
 validate_prerequisites
 validate_profiles
-#run_virtualbox
+create_vfd
+run_virtualbox
 
