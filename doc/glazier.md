@@ -4,7 +4,7 @@ Glazier
 ##Glossary
 
 - `glazier vm` - the virtual machine that runs Windows, booted inside Virtual Box
-- `builder.iso` - the iso image that contains all the resources required by the glazier vm to specialize a Windows image
+- `builder.img` - the image that contains all the resources required by the glazier vm to specialize a Windows image
 - `temp image` - a glance image that is booted in order to setup windows and specialize the image
 - `temp instance` - a nova instance of the `temp image`; it runs the windows setup in unattended mode
 - `prepped image` - after `temp image` reaches a shutoff state, it's snapshot in glance is the `prepped image`
@@ -86,6 +86,11 @@ It generates an `unattend.xml` file that installs Windows and runs a script when
 It creates a `glazier vm` by generating a vbox configuration file and boots it using `VBoxManage`. The `glazier vm` will have all ISOs mounted in a predictable order, so the drive letters available in the guest os are consistent each time the `glazier vm` is booted.
 
 ###The unattend.xml file
+
+The unattend xml file must do the following:
+
+- Use a product key to activate Windows, if one was specified
+- Configure Windows to always run a "shell.ps1" from the builder.img drive as the default shell for windows
 
 ###Arguments
 
