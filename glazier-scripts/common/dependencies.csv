@@ -1,0 +1,5 @@
+name,uri
+qemu-img,http://qemu.weilnetz.de/w64/2012-08-24/qemu-img.exe
+vc-python,http://www.microsoft.com/en-us/download/details.aspx?id=44266
+python,https://www.python.org/ftp/python/2.7.8/python-2.7.8.amd64.msi
+easy-install,https://bootstrap.pypa.io/ez_setup.py
