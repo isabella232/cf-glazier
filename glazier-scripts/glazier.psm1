@@ -23,7 +23,7 @@ function New-Image {
   [CmdletBinding()]
   param(
     [string]$Name,
-    [string]$GlazierProfile,
+    [string]$GlazierProfilePath,
     [string]$WimPath="e:\sources\install.wim",
     [string]$VirtIOPath="f:\",
     [string]$VhdMountLetter="v",
@@ -31,6 +31,10 @@ function New-Image {
     [string]$Workspace="c:\workspace",
     [switch]$CleanupWhenDone=$true
   )
+
+  $isVerbose = [bool]$PSBoundParameters["Verbose"]
+
+  $PSDefaultParameterValues = @{"*:Verbose"=$isVerbose}
 
   # TODO: check for tooling
 
@@ -43,7 +47,7 @@ function New-Image {
   Write-Verbose "vhd filename will be ${vhdFileName}"
   $workDir = Join-Path $Workspace $timestamp
   Write-Verbose "Will be working in directory ${workDir}"
-  $qcow2Path = Join-Path $workDir $qcow2FileName
+  $qcow2Path = Join-Path $Workspace $qcow2FileName
   Write-Verbose "Full qcow2 path will be ${qcow2Path}"
   $vhdPath = Join-Path $workDir $vhdFileName
   Write-Verbose "Full vhd path will be ${vhdPath}"
@@ -57,7 +61,7 @@ function New-Image {
     Validate-WindowsWIM $WIMPath
 
     Write-Output 'Getting profile information ...'
-    $glazierProfile = Get-GlazierProfile $GlazierProfile
+    $glazierProfile = Get-GlazierProfile $GlazierProfilePath
 
     # Make sure we have a clean working directory
     Write-Output 'Cleaning up work directory ...'
@@ -76,26 +80,43 @@ function New-Image {
     Create-BCDBootConfig $VhdMountLetter
 
     Write-Output 'Configuring Windows features ...'
-    Set-DesiredFeatureStateInImage $VhdMountLetter $glazierProfile.FeatureCSVFile $wimPath
+    Set-DesiredFeatureStateInImage $VhdMountLetter $glazierProfile.FeaturesCSVFile $wimPath
 
     # TODO: download basic tools like cloudbase/sdelete/etc.
     # TODO: download glazier profile resources
     # TODO: setup unattend/firstlogon/specialize
-  }
-  finally
-  {
+
     Write-Output 'Dismounting vhd ...'
     Dismount-VHDImage $vhdPath
 
+    Write-Output 'Converting vhd to qcow2 ...'
+    Convert-VHDToQCOW2 $vhdPath $qcow2Path
+  }
+  catch
+  {
+    $errorMessage = $_.Exception.Message
+    $performConversionToQCOW2 = $false
+    Write-Host -ForegroundColor Red "${errorMessage}"
+
+    try
+    {
+      Write-Output 'Dismounting vhd ...'
+      Dismount-VHDImage $vhdPath
+    }
+    catch
+    {
+      $errorMessage = $_.Exception.Message
+      Write-Warning "Failed to dismount vhd (it must have already happened): ${errorMessage}"
+    }
+  }
+  finally
+  {
     if ($CleanupWhenDone -eq $true)
     {
       Write-Output 'Cleaning up work directory ...'
-      Clean-Dir $workDir
+      rm -Recurse -Force -Confirm:$false $workDir -ErrorAction SilentlyContinue
     }
   }
-
-  Write-Output 'Converting vhd to qcow2 ...'
-  Convert-VHDToQCOW2 $vhdPath $qcow2Path
 }
 
 function Initialize-Image {

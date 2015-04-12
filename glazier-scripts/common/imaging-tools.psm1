@@ -1,5 +1,4 @@
-function CheckIsAdmin()
-{
+function CheckIsAdmin{[CmdletBinding()]param()
     $wid = [System.Security.Principal.WindowsIdentity]::GetCurrent()
     $prp = new-object System.Security.Principal.WindowsPrincipal($wid)
     $adm = [System.Security.Principal.WindowsBuiltInRole]::Administrator
@@ -10,13 +9,17 @@ function CheckIsAdmin()
     }
 }
 
-function Validate-WindowsWIM($wimPath)
-{
+function Validate-WindowsWIM{[CmdletBinding()]param($wimPath)
+  if ((Test-Path $wimPath) -eq $false)
+  {
+    throw "WIM file ${wimPath} does not exist!"
+  }
+
   try
   {
     $wimInfo = Get-WindowsImage -ImagePath $wimPath -Index 1
 
-    if ($wimInfo.Name -ne 'Windows Server 2012 R2 SERVERSTANDARDCORE')
+    if ($wimInfo.ImageName -ne 'Windows Server 2012 R2 SERVERSTANDARDCORE')
     {
       throw "Did not find image 'Windows Server 2012 R2 SERVERSTANDARDCORE' at index 0 for wim '${wimPath}'."
     }
@@ -35,42 +38,7 @@ function Validate-WindowsWIM($wimPath)
 
 }
 
-#function Mount-WimImage($wimPath, $wimMountDir)
-#{
-#  try
-#  {
-#    rm -Recurse -Force -Confirm:$false $wimMountDir -ErrorAction SilentlyContinue
-#    mkdir $wimMountDir
-#
-#    Mount-WindowsImage -ImagePath $wimPath -Index 1 -Path $wimMountDir
-#
-#    Write-Verbose "Mounted wim successfully."
-#  }
-#  catch
-#  {
-#    Write-Verbose $_.Exception
-#    $exceptionMessage = $_.Exception.Message
-#    throw "Error while trying to mount wim file ${wimPath}: ${exceptionMessage}"
-#  }
-#}
-#
-#function Dismount-WimImage($wimMountDir)
-#{
-#  try
-#  {
-#    Dismount-WindowsImage -Path $wimMountDir -Discard
-#    Write-Verbose "Dismounted wim successfully."
-#  }
-#  catch
-#  {
-#    Write-Verbose $_.Exception
-#    $exceptionMessage = $_.Exception.Message
-#    throw "Error while trying to dismount wim mounted at ${wimMountDir}: ${exceptionMessage}"
-#  }
-#}
-
-function CreateAndMount-VHDImage($vhdPath, $vhdMountLetter, $sizeInBytes)
-{
+function CreateAndMount-VHDImage{[CmdletBinding()]param($vhdPath, $vhdMountLetter, $sizeInBytes)
   $diskpartScriptPath = "${vhdPath}.diskpart"
 
   $diskPartScript = @"
@@ -95,11 +63,11 @@ format fs="ntfs" label="System" quick
   }
 }
 
-function Dismount-VHDImage($vhdPath)
-{
+
+function Dismount-VHDImage{[CmdletBinding()]param($vhdPath)
   try
   {
-    Dismount-DiskImage -ImagePath $vhdPath
+    Dismount-DiskImage -ImagePath $vhdPath -PassThru -ErrorAction Stop
     Write-Verbose "Dismounted vhd successfully."
   }
   catch
@@ -110,23 +78,20 @@ function Dismount-VHDImage($vhdPath)
   }
 }
 
-function Apply-Image($wimPath, $vhdMountLetter)
-{
-  try
+function Apply-Image{[CmdletBinding()]param($wimPath, $vhdMountLetter)
+  $dismProcess = Start-Process -Wait -PassThru -NoNewWindow 'dism.exe' "/apply-image /imagefile:${wimPath} /index:1 /ApplyDir:${vhdMountLetter}:\"
+
+  if ($dismProcess.ExitCode -ne 0)
   {
-    Expand-WindowsImage -ImagePath $wimPath -ApplyPath "${vhdMountLetter}:\" -Index 1
-    Write-Verbose "Applied windows image successfully."
-  }
-  catch
-  {
-    Write-Verbose $_.Exception
-    $exceptionMessage = $_.Exception.Message
     throw "Error while trying to apply wim '${wimPath}' to vhd mounted at '${vhdMountLetter}:\': ${exceptionMessage}"
+  }
+  else
+  {
+    Write-Verbose "Applied windows image successfully."
   }
 }
 
-function Create-BCDBootConfig($vhdMountLetter)
-{
+function Create-BCDBootConfig{[CmdletBinding()]param($vhdMountLetter)
     $bcdbootPath = "${vhdMountLetter}:\windows\system32\bcdboot.exe"
 
     $bcdbootProcess = Start-Process -Wait -PassThru -NoNewWindow $bcdbootPath "${vhdMountLetter}:\windows /s ${vhdMountLetter}: /v"
@@ -141,8 +106,7 @@ function Create-BCDBootConfig($vhdMountLetter)
     }
 }
 
-function Add-VirtIODriversToImage($vhdMountLetter, $virtioPath)
-{
+function Add-VirtIODriversToImage{[CmdletBinding()]param($vhdMountLetter, $virtioPath)
   try
   {
     Add-WindowsDriver -Path "${vhdMountLetter}:\" -Driver "${virtioPath}\WIN8\AMD64" -ForceUnsigned -Recurse
@@ -156,8 +120,7 @@ function Add-VirtIODriversToImage($vhdMountLetter, $virtioPath)
   }
 }
 
-function Set-DesiredFeatureStateInImage($vhdMountLetter, $featureFile, $wimPath)
-{
+function Set-DesiredFeatureStateInImage{[CmdletBinding()]param($vhdMountLetter, $featureFile, $wimPath)
   $features = Import-Csv $featureFile
 
   $removedFeatures = $features | Where-Object { $_.desired -eq 'Removed' }
@@ -179,7 +142,7 @@ function Set-DesiredFeatureStateInImage($vhdMountLetter, $featureFile, $wimPath)
     $featureName = $feature.Feature
 
     Write-Verbose "Disabling feature '${featureName}'"
-    Disable-WindowsOptionalFeature -Path "${winImagePath}:\" -FeatureName ${featureName} -Verbose
+    Disable-WindowsOptionalFeature -Path "${vhdMountLetter}:\" -FeatureName ${featureName} -Verbose
   }
 
   foreach ($feature in $enabledFeatures)
@@ -187,7 +150,7 @@ function Set-DesiredFeatureStateInImage($vhdMountLetter, $featureFile, $wimPath)
     $featureName = $feature.Feature
 
     Write-Verbose "Enabling feature '${featureName}'"
-    Enable-WindowsOptionalFeature -Path "${winImagePath}:\" -FeatureName ${featureName} -All -LimitAccess -Source $wimPath -Verbose
+    Enable-WindowsOptionalFeature -Path "${vhdMountLetter}:\" -FeatureName ${featureName} -All -LimitAccess -Source $wimPath -Verbose
   }
 }
 

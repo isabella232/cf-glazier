@@ -1,5 +1,11 @@
 $currentDir = split-path $SCRIPT:MyInvocation.MyCommand.Path -parent
 
+Remove-Module glazier
+Remove-Module glazier-profile-tools
+Remove-Module openstack-tools
+Remove-Module qemu-img-tools
+Remove-Module utils
+
 Import-Module -DisableNameChecking (Join-Path $currentDir './common/utils.psm1')
 Import-Module -DisableNameChecking (Join-Path $currentDir './common/glazier-profile-tools.psm1')
 Import-Module -DisableNameChecking (Join-Path $currentDir './common/openstack-tools.psm1')
@@ -10,13 +16,16 @@ $myProfile = Get-GlazierProfile '.\test\myprofile'
 
 if ((Verify-QemuImg) -eq $false)
 {
-  Install-QemuImg
+  Install-QemuImg -Verbose
 }
+
+# Stable VirtIO
+# http://alt.fedoraproject.org/pub/alt/virtio-win/stable/virtio-win-0.1-81.iso
 
 
 $name = 'pelerinul'
 $glazierProfile = '.\test\myprofile'
-$wimPath="C:\code\cf-windea-image-creation\assets\9600.17050.WINBLUE_REFRESH.140317-1640_X64FRE_SERVER_EVAL_EN-US-IR3_SSS_X64FREE_EN-US_DV9\sources\install.wim"
-$virtIOPath="C:\code\cf-windea-image-creation\assets\virtio-win-0.1-81"
+$wimPath="C:\assets\winiso\sources\install.wim"
+$virtIOPath="C:\assets\virtio"
 
 New-Image -Name $name -GlazierProfile $glazierProfile -WimPath $wimPath -VirtIOPath $virtIOPath -Verbose

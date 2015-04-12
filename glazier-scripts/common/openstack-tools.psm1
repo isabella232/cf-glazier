@@ -5,13 +5,11 @@ $glanceBin = Join-Path $pythonScriptDir 'glance.exe'
 $novaBin = Join-Path $pythonScriptDir 'nova.exe'
 
 
-function Verify-PythonClientsInstallation()
-{
+function Verify-PythonClientsInstallation{[CmdletBinding()]param()
 
 }
 
-function Install-PythonClients()
-{
+function Install-PythonClients{[CmdletBinding()]param()
   # Download and install VC for Python from
   #wget 'http://www.microsoft.com/en-us/download/details.aspx?id=44266'
   #$installProcess = Start-Process -Wait -PassThru -NoNewWindow $novaBin "delete `"${vmName}`""
@@ -32,8 +30,7 @@ function Install-PythonClients()
   # c:\python27\scripts\pip.exe install python-glanceclient
 }
 
-function Check-OpenRCEnvVars()
-{
+function Check-OpenRCEnvVars{[CmdletBinding()]param()
   #OS_REGION_NAME=region-b.geo-1
   #OS_TENANT_ID=10990308817909
   #OS_PASSWORD=ecastravete
@@ -43,8 +40,7 @@ function Check-OpenRCEnvVars()
 }
 
 # Terminate a VM instance
-function Delete-VMInstance($vmName)
-{
+function Delete-VMInstance{[CmdletBinding()]param($vmName)
   Write-Verbose "Deleting instance '${vmName}' ..."
 
   $deleteVMProcess = Start-Process -Wait -PassThru -NoNewWindow $novaBin "delete `"${vmName}`""
@@ -60,8 +56,7 @@ function Delete-VMInstance($vmName)
 }
 
 # Delete images
-function Delete-Image($imageName)
-{
+function Delete-Image{[CmdletBinding()]param($imageName)
   Write-Verbose "Deleting image '${imageName}' ..."
 
   $deleteImageProcess = Start-Process -Wait -PassThru -NoNewWindow $glanceBin "image-delete `"${imageName}`""
@@ -77,8 +72,7 @@ function Delete-Image($imageName)
 }
 
 # Create a new image from the VM that installed Windows
-function Create-VMSnapshot($vmName, $imageName)
-{
+function Create-VMSnapshot{[CmdletBinding()]param($vmName, $imageName)
   Write-Verbose "Creating image '${baseCompleteImageName}' based on instance ..."
 
   $createImageProcess = Start-Process -Wait -PassThru -NoNewWindow $novaBin "image-create --poll `"${vmName}`" `"${imageName}`""
@@ -94,8 +88,7 @@ function Create-VMSnapshot($vmName, $imageName)
 }
 
 # Wait for the instance to be shut down
-function WaitFor-VMShutdown($vmName)
-{
+function WaitFor-VMShutdown{[CmdletBinding()]param($vmName)
   $instanceOff = $false
   while ($instanceOff -eq $false)
   {
@@ -114,8 +107,7 @@ function WaitFor-VMShutdown($vmName)
 }
 
 # Boot a VM using the created image (it will install Windows unattended)
-function Boot-VM($vmName, $imageName, $keyName, $securityGroup, $networkId)
-{
+function Boot-VM{[CmdletBinding()]param($vmName, $imageName, $keyName, $securityGroup, $networkId)
   Write-Verbose "Booting VM '${vmName}' ..."
 
   $bootVMProcess = Start-Process -Wait -PassThru -NoNewWindow $novaBin "boot --flavor `"${flavor}`" --image `"${imageName}`" --key-name `"${keyName}`" --security-groups `"${securityGroup}`" --nic net-id=${networkId} `"${vmName}`""
@@ -131,8 +123,7 @@ function Boot-VM($vmName, $imageName, $keyName, $securityGroup, $networkId)
 }
 
 # Update an image with the specified property
-function UpdateImageProperty($imageName, $propertyName, $propertyValue)
-{
+function UpdateImageProperty{[CmdletBinding()]param($imageName, $propertyName, $propertyValue)
   Write-Verbose "Updating property '${propertyName}' for image '${imageName}' using glance ..."
   $updateImageProcess = Start-Process -Wait -PassThru -NoNewWindow $glanceBin "image-update --property ${propertyName}=${propertyValue} `"${imageName}`""
   if ($updateImageProcess.ExitCode -ne 0)
@@ -146,8 +137,7 @@ function UpdateImageProperty($imageName, $propertyName, $propertyValue)
 }
 
 # Create an image based on the generated qcow2
-function CreateImage($imageName, $localQCOW2Image)
-{
+function CreateImage{[CmdletBinding()]param($imageName, $localQCOW2Image)
   Write-Verbose "Creating image '${imageName}' using glance ..."
   $createImageProcess = Start-Process -Wait -PassThru -NoNewWindow $glanceBin "image-create --min-disk 20 --min-ram 2048 --disk-format qcow2 --container-format bare --file `"${localQCOW2Image}`" --name `"${imageName}`""
   if ($createImageProcess.ExitCode -ne 0)

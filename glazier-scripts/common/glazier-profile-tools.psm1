@@ -1,6 +1,5 @@
 
-function Get-GlazierProfile($glazierProfilePath)
-{
+function Get-GlazierProfile{[CmdletBinding()]param($glazierProfilePath)
   if ((Test-Path $glazierProfilePath) -eq $false)
   {
     throw "Glazier profile path '${glazierProfilePath}' does not exist."
