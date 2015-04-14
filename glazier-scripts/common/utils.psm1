@@ -32,7 +32,7 @@ function Get-Dependency{[CmdletBinding()]param($name)
 function Clean-Dir{[CmdletBinding()]param($path)
   Write-Verbose "Cleaning directory ${$path}"
   rm -Recurse -Force -Confirm:$false $path -ErrorAction SilentlyContinue
-  mkdir $path | out-null
+  mkdir $path -ErrorAction 'Stop' | out-null
 }
 
 function Convert-ImageNameToFileName{[CmdletBinding()]param($name)
@@ -48,16 +48,26 @@ function Download-File{[CmdletBinding()]param($url, $targetFile)
   $totalLength = [System.Math]::Floor($response.get_ContentLength()/1024)
   $responseStream = $response.GetResponseStream()
   $targetStream = New-Object -TypeName System.IO.FileStream -ArgumentList $targetFile, Create
-  $buffer = new-object byte[] 100KB
+  $buffer = new-object byte[] 10KB
   $count = $responseStream.Read($buffer,0,$buffer.length)
   $downloadedBytes = $count
+  $sw = [System.Diagnostics.Stopwatch]::StartNew()
 
   while ($count -gt 0)
   {
      $targetStream.Write($buffer, 0, $count)
      $count = $responseStream.Read($buffer,0,$buffer.length)
      $downloadedBytes = $downloadedBytes + $count
-     Write-Progress -activity "Downloading file '$($url.split('/') | Select -Last 1)'" -status "Downloaded ($([System.Math]::Floor($downloadedBytes/1024))K of $($totalLength)K): " -PercentComplete ((([System.Math]::Floor($downloadedBytes/1024)) / $totalLength)  * 100)
+
+     if ($sw.Elapsed.TotalMilliseconds -ge 500) {
+       $activity = "Downloading file '$($url.split('/') | Select -Last 1)'"
+       $status = "Downloaded ($([System.Math]::Floor($downloadedBytes/1024))K of $($totalLength)K): "
+       $percentComplete = ((([System.Math]::Floor($downloadedBytes/1024)) / $totalLength)  * 100)
+       Write-Progress -activity $activity -status $status -PercentComplete $percentComplete
+
+       $sw.Reset();
+       $sw.Start()
+    }
   }
 
   Write-Progress -activity "Finished downloading file '$($url.split('/') | Select -Last 1)'" -status "Done"

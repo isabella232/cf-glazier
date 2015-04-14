@@ -1,2 +1,4 @@
-name,uri
-sdelete.zip,https://download.sysinternals.com/files/SDelete.zip
+destination,url
+zmq-installer.exe,https://region-b.geo-1.objects.hpcloudsvc.com/v1/54026737306152/als-windows-extensions-prerequisites/windea/ZeroMQ-3.2.4~miru1.0-x64.exe
+git-installer.exe,https://region-b.geo-1.objects.hpcloudsvc.com/v1/54026737306152/als-windows-extensions-prerequisites/windea/Git-1.9.5-preview20141217.exe
+vs2012bt-installer.exe,https://region-b.geo-1.objects.hpcloudsvc.com/v1/54026737306152/als-windows-extensions-prerequisites/windea/BuildTools_Full.exe

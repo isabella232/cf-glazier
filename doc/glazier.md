@@ -57,14 +57,14 @@ IIS-FTPServer,Disabled,Disabled,Removed
 > Example
 
 ```csv
-path,uri
+destination,url
 \installers\product.zip,http://download.domain.com/product.zip
 ```
 
 - `tools.csv` is a CSV file containing all required tools so that for your specialize script;
 > Example
 ```csv
-name,uri
+destination,url
 tool.zip,http://download.domain.com/tool.zip
 ```
 
@@ -105,6 +105,29 @@ The unattend xml file must do the following:
 - `--product-key` - required - windows product key used to activate the `glazier vm`
 
 ##New-Image
+
+## Sample contents of %HOMEDRIVE%\glazier on a new image
+
+```
+│   cloudinit.msi
+│   logon.ps1
+│   pswindowsupdate.zip
+│   sdelete.exe
+│   tools.csv
+│   ultradefrag.zip
+│   Unattend.xml
+│
+└───profile
+    │   features.csv
+    │   git-installer.exe
+    │   resources.csv
+    │   vs2012bt-installer.exe
+    │   zmq-installer.exe
+    │
+    └───specialize
+            specialize.ps1
+            tools.csv
+```
 
 ##Initialize-Image
 

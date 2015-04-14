@@ -24,21 +24,22 @@ function New-Image {
   param(
     [string]$Name,
     [string]$GlazierProfilePath,
-    [string]$WimPath="e:\sources\install.wim",
-    [string]$VirtIOPath="f:\",
-    [string]$VhdMountLetter="v",
+    [string]$WimPath='e:\sources\install.wim',
+    [string]$VirtIOPath='f:\',
     [int]$SizeInBytes=25000,
-    [string]$Workspace="c:\workspace",
-    [switch]$CleanupWhenDone=$true
+    [string]$Workspace='c:\workspace',
+    [switch]$CleanupWhenDone=$true,
+    [string]$ProductKey=''
   )
 
   $isVerbose = [bool]$PSBoundParameters["Verbose"]
-
   $PSDefaultParameterValues = @{"*:Verbose"=$isVerbose}
 
   # TODO: check for tooling
 
   $timestamp = Get-Date -f 'yyyyMMddHHmmss'
+
+  $vhdMountLetter = $null
 
   # Prepare some variable names
   $qcow2FileName = "$(Convert-ImageNameToFileName $Name)${timestamp}.qcow2"
@@ -68,23 +69,28 @@ function New-Image {
     Clean-Dir $workDir
 
     Write-Output 'Creating and mounting vhd ...'
-    CreateAndMount-VHDImage $vhdPath $VhdMountLetter $SizeInBytes
+    CreateAndMount-VHDImage $vhdPath $SizeInBytes ([ref]$vhdMountLetter)
 
     Write-Output 'Applying wim to vhd ...'
-    Apply-Image $WIMPath $VhdMountLetter
+    Apply-Image $WIMPath $vhdMountLetter
+
+    Write-Output 'Setting up tools for the unattended install ...'
+    Add-UnattendScripts $vhdMountLetter
+
+    Write-Output 'Adding glazier profile to image ...'
+    Add-GlazierProfile $vhdMountLetter $glazierProfile
 
     Write-Output 'Adding VirtIO drivers to vhd ...'
-    Add-VirtIODriversToImage $VhdMountLetter $VirtIOPath
+    Add-VirtIODriversToImage $vhdMountLetter $VirtIOPath
 
     Write-Output 'Making vhd bootable ...'
-    Create-BCDBootConfig $VhdMountLetter
+    Create-BCDBootConfig $vhdMountLetter
 
     Write-Output 'Configuring Windows features ...'
-    Set-DesiredFeatureStateInImage $VhdMountLetter $glazierProfile.FeaturesCSVFile $wimPath
+    Set-DesiredFeatureStateInImage $vhdMountLetter $glazierProfile.FeaturesCSVFile $wimPath
 
-    # TODO: download basic tools like cloudbase/sdelete/etc.
-    # TODO: download glazier profile resources
-    # TODO: setup unattend/firstlogon/specialize
+    Write-Output 'Setting up unattend file ...'
+    Add-UnattendXml $vhdMountLetter $ProductKey
 
     Write-Output 'Dismounting vhd ...'
     Dismount-VHDImage $vhdPath

@@ -17,11 +17,12 @@ function Get-GlazierProfile{[CmdletBinding()]param($glazierProfilePath)
     }
     else
     {
-      Write-Verbose "Ok, '${$file}' found in profile directory '${glazierProfilePath}'"
+      Write-Verbose "Ok, '${file}' found in profile directory '${glazierProfilePath}'"
     }
   }
 
   $result = New-Object PSObject
+  $result | Add-Member -MemberType 'NoteProperty' -Name 'Path' -value $glazierProfilePath
   $result | Add-Member -MemberType 'NoteProperty' -Name 'FeaturesCSVFile' -value (Join-Path $glazierProfilePath 'features.csv')
   $result | Add-Member -MemberType 'NoteProperty' -Name 'ResourcesCSVFile' -value (Join-Path $glazierProfilePath 'resources.csv')
   $result | Add-Member -MemberType 'NoteProperty' -Name 'SpecializeScriptFile' -value (Join-Path $glazierProfilePath 'specialize\specialize.ps1')

@@ -1,2 +1,4 @@
 path,uri
-\installers\git-installer.exe,https://github.com/msysgit/msysgit/releases/download/Git-1.9.5-preview20150319/Git-1.9.5-preview20150319.exe
+\als_installers\cf-windows-extensions-installers.zip,https://region-b.geo-1.objects.hpcloudsvc.com/v1/54026737306152/cf-windows-extensions-installers/59-2015-04-09_11-30-16%2Fcf-windows-extensions-installers.zip
+\als_installers\cf-logyard-installers.zip,https://region-b.geo-1.objects.hpcloudsvc.com/v1/54026737306152/cf-windows-supervisord-installers/24-2015-04-06_09-53-17%2Fcf-windows-supervisord.zip
+\als_installers\cf-windows-supervisord.zip,https://region-b.geo-1.objects.hpcloudsvc.com/v1/54026737306152/cf-windows-supervisord-installers/24-2015-04-06_09-53-17%2Fcf-windows-supervisord.zip
