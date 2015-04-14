@@ -15,6 +15,7 @@ profiles=""
 sqlserverversion="none"
 bridgeadapter="eth0"
 assetsdir="${vmpath}/assets"
+tmpdir="/tmp/glazier"
 
 # shows the users the script's syntax
 function show_help()
@@ -114,7 +115,8 @@ function get_os()
 function parse_parameters()
 {
 
-	#info 2 "Parsing command line parameters"
+	# header for the arguments csv file
+	echo name,value>${vmpath}/floppy/args.csv
 
 	until [ $# -eq 0 ];
 	do
@@ -125,36 +127,35 @@ function parse_parameters()
 			set_colors
 			shift
 			info 3 "Got ${bldylw}use-colors${txtrst} = ${use_colors}"
+			echo use_colors,${use_colors} >>${tmpdir}/args.csv
 			;;
 		"--verbosity"|"-v")
 			shift
 			verbosity=$1
 			shift
 			info 3 "Got verbosity level parameter ${bldylw}${verbosity}${txtrst}"
+			echo verbosity,${verbosity} >>${tmpdir}/args.csv
 			;;
 		"--windows-iso")
 			shift
 			windows_iso=$1
 			shift
 			info 3 "Got ${bldylw}windows-iso${txtrst} = ${windows_iso}"
+			echo windows-iso,${windows_iso} >>${tmpdir}/args.csv
 			;;
 		"--sql-server-iso")
 			shift
 			sqlserver_iso=$1
 			shift
 			info 3 "Got ${bldylw}sqlserver-iso${txtrst} = ${sqlserver_iso}"
-			;;
-		"--builder-iso")
-			shift
-			builder_iso=$1
-			shift
-			info 3 "Got ${bldylw}builder-iso${txtrst} = ${builder_iso}"
+			echo sql-server-iso,${sqlserver_iso} >>${tmpdir}/args.csv
 			;;
 		"--virtio-iso")
 			shift
 			virtio_iso=$1
 			shift
 			info 3 "Got ${bldylw}virtio-iso${txtrst} = ${virtio_iso}"
+			echo virtio-iso,${virtio_iso} >>${tmpdir}/args.csv
 			;;
 		"--help"|"-h")
 			show_help
@@ -170,6 +171,7 @@ function parse_parameters()
 			shift
 			profiles="$1 $profiles"
 			info 3 "Added profile ${bldylw}$1${txtrst} to profile list"
+			echo profile,$1 >>${tmpdir}/args.csv
 			shift
 			;;
 		"--with-sql-server")
@@ -179,6 +181,7 @@ function parse_parameters()
 			if [ "${sqlserverversion}" == "2012" -o "$sqlserverversion" == "2014" -o "${sqlserverversion}" == "none" ];
 			then
 				info 3 "Using SQLServer version ${bldylw}$sqlserverversion${txtrst}"
+				echo with-sql-server,${sqlserverversion} >>${tmpdir}/args.csv
 			else
 				error 1 "Unkown SQLServer version ${sqlserverversion}"
 				exit 1
@@ -189,18 +192,14 @@ function parse_parameters()
 			vmpath=$1
 			shift
 			info 3 "Got vmpath = $vmpath"
+			echo vm-path,${vmpath} >>${tmpdir}/args.csv
 			;;
 		"--product-key")
 			shift
 			productkey=$1
 			shift
 			info 3 "Got product key"
-			;;
-		"--bridgeadapter")
-			shift
-			bridgeadapter=$1
-			shift
-			info 3 "Got bridgeadapter = ${bridgeadapter}"
+			echo product-key,${productkey} >>${tmpdir}/args.csv
 			;;
 		*)
 			error 1 "Unknown parameter $1 ... Exiting"
@@ -241,6 +240,24 @@ function create_vfd()
 		# recursively copy all assets
 		info 3 "Copying assets to the floppy drive"
 		run 3 cp -R ${assetsdir}/* ${vmpath}/floppy
+		run 3 cp -R glazier-scripts/* ${vmpath}/floppy
+
+		# copying csv files
+		info 3 "Moving argument list csv file to the floppy"
+		run 3 mv -f ${tmpdir}/args.csv ${vmpath}/floppy
+
+		# putting OS* env variables on the floppy
+		info 3 "Copying environment variables to the floppy"
+		echo name,value>${vmpath}/floppy/env.csv
+		echo OS_REGION_NAME,${OS_REGION_NAME} >>${vmpath}/floppy/env.csv
+		echo OS_TENANT_ID,${OS_TENANT_ID} >>${vmpath}/floppy/env.csv
+		echo OS_PASSWORD,${OS_PASSWORD} >>${vmpath}/floppy/env.csv
+		echo OS_USERNAME,${OS_USERNAME} >>${vmpath}/floppy/env.csv
+		echo OS_TENANT_NAME,${OS_TENANT_NAME} >>${vmpath}/floppy/env.csv
+		echo OS_AUTH_URL,${OS_AUTH_URL} >>${vmpath}/floppy/env.csv
+
+		# put the product key in autounattend.xml
+		customize_autounattend
 
 		# unmount the image
 		info 3 "Unmounting the floppy image"
@@ -385,6 +402,14 @@ function validate_prerequisites()
 	then
 		info 3 "It doesn't exist, create it"
 		run 3 mkdir -p ${vmpath}/output
+	fi
+
+	# check if the temporary directory exists
+	info 3 "Checking for temporary directory"
+	if [ ! -d "${tmpdir}" ];
+	then
+		info 3 "Creating temporary directory"
+		run 3 mkdir "${tmpdir}"
 	fi
 
 	info 3 "Done checking prerequisites"
@@ -646,14 +671,42 @@ function expand_paths()
 
 
 
-# creates the windows image in virtualbox. FIXME: test it
+# customizez autounattend.xml. This gets called from create_vfd
+function customize_autounattend()
+{
+	if [ -e "${assetsdir}/autounattend.xml" ];
+	then
+		run 2 sed -i s/\"PRODUCT-KEY-DO-NOT-CHANGE-THIS-LINE\"/\"${productkey}\"/g ${vmpath}/floppy/autounattend.xml
+	else
+		# there is no autounattend.xml template, exit
+		error 1 "Cannot find the file ${assetsdir}/autounattend.xml"
+		exit 1
+	fi
+}
+
+# creates the windows image in virtualbox.
 function run_virtualbox()
 {
 
-	if [ -e ${vmpath}/vbox/${vmname}/${vmname}.vdi ]
+	local vm
+
+	if [ -e ${vmpath}/vbox/${vmname}/${vmname}.vdi ];
 	then
-		info 2 "Unregister & delete harddisk"
-		vboxmanage closemedium disk ${vmpath}/vbox/${vmname}/${vmname}.vdi --delete
+		info 3 "Unregister & delete harddisk"
+		VBoxManage closemedium disk ${vmpath}/vbox/${vmname}/${vmname}.vdi --delete
+	fi
+
+	for vm in `VBoxManage list vms|cut -f 2 -d \{|cut -f 1 -d \}`;
+	do
+		info 3 "Unregistering virtual machine $vm"
+		run 2 VBoxManage unregistervm $vm
+	done
+
+
+	if [ -d "${vmpath}/vbox/${vmname}" ];
+	then
+		info 3 "Delete old VM directory"
+		run 2 rm -rf "${vmpath}/vbox/${vmname}"
 	fi
 
 	info 3 "Create VM and register with VirtualBox"
