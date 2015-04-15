@@ -1,5 +1,5 @@
 
-$pythonDir = Join-Path $env:HOMEDRIVE 'Python27'
+$pythonDir = Join-Path $env:SYSTEMDRIVE 'Python27'
 $pythonScriptDir = Join-Path $pythonDir 'Scripts'
 $glanceBin = Join-Path $pythonScriptDir 'glance.exe'
 $novaBin = Join-Path $pythonScriptDir 'nova.exe'

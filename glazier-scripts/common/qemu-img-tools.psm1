@@ -1,7 +1,7 @@
 $currentDir = split-path $SCRIPT:MyInvocation.MyCommand.Path -parent
 Import-Module -DisableNameChecking (Join-Path $currentDir './utils.psm1')
 
-$qemuDir = Join-Path $env:HOMEDRIVE 'qemu'
+$qemuDir = Join-Path $env:SYSTEMDRIVE 'qemu'
 $qemuBin = Join-Path $qemuDir 'qemu-img.exe'
 
 function Verify-QemuImg{[CmdletBinding()]param()

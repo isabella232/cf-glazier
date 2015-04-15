@@ -52,7 +52,7 @@ IIS-LegacyScripts,Disabled,Disabled,Removed
 IIS-FTPServer,Disabled,Disabled,Removed
 ```
 
-- `resources.csv` is a CSV file that contains a list of resources that will be placed on the final image; each resource is saved to the to `%HOMEDRIVE%`; the directory path is created if it doesn't exist
+- `resources.csv` is a CSV file that contains a list of resources that will be placed on the final image; each resource is saved to the to `%SYSTEMDRIVE%`; the directory path is created if it doesn't exist
 
 > Example
 
@@ -106,7 +106,7 @@ The unattend xml file must do the following:
 
 ##New-Image
 
-## Sample contents of %HOMEDRIVE%\glazier on a new image
+## Sample contents of %SYSTEMDRIVE%\glazier on a new image
 
 ```
 │   cloudinit.msi
