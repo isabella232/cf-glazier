@@ -9,12 +9,11 @@ vmpath="~/.glazier"
 productkey=""
 use_colors="yes"
 windows_iso="~/Downloads/en_windows_server_2012_r2_with_update_x64_dvd_6052708.iso"
-sqlserver_iso="~/Downloads/en_windows_server_2012_r2_with_update_x64_dvd_6052708.iso"
+sqlserver_iso=""
 virtio_iso="/usr/bin/vi"
 profiles=""
 sqlserverversion="none"
-bridgeadapter="eth0"
-assetsdir="${vmpath}/assets"
+assetsdir="assets"
 tmpdir="/tmp/glazier"
 
 # shows the users the script's syntax
@@ -33,7 +32,6 @@ Available options:
 						  be saved. The default is ~/.glazier
 --with-sql-server {none|2012|2014}		- if this is set, you also have to set --sql-server-iso
 --product-key KEY				- Windows product key
---bridgeadapter					- network interface to bridge to the vm (default:eth0)
 --dry-run					- run but don't make any changes
 --verbosity verbosity_level			- verbosity level is an interger between 1-3, with 1
 						  being the least verbose and 3 being the most verbose
@@ -47,7 +45,7 @@ EOF
 # sets the appropiate color values based on $use_colors
 function set_colors()
 {
-	if [ "$use_colors" == "yes" ];
+	if [ "$use_colors" == "yes" -a "$os_type" == "Linux" ];
 	then
 		txtred='\e[0;31m' # Red
 		txtgrn='\e[0;32m' # Green
@@ -217,13 +215,14 @@ function create_vfd()
 
 	info 2 "Creating floppy"
 
+	# check if $vmpath/floppy exists, if not, create it
+	if [ ! -d "$vmpath/floppy" ];
+	then
+		run 3 mkdir -p "$vmpath/floppy"
+	fi
+
 	case "$os_type" in
 	"Linux")
-		# check if $vmpath/floppy exists, if not, create it
-		if [ ! -d "$vmpath/floppy" ];
-		then
-			mkdir -p "$vmpath/floppy"
-		fi
 
 		# create a 2MB empty file
 		info 3 "Creating empty floppy image file"
@@ -257,12 +256,15 @@ function create_vfd()
 		echo OS_AUTH_URL,${OS_AUTH_URL} >>${vmpath}/floppy/env.csv
 
 		# put the product key in autounattend.xml
-		customize_autounattend
+		info 3 "Replacing product key in autounattend.xml"
+		cat ${vmpath}/floppy/autounattend.xml | sed s/PRODUCT-KEY-DO-NOT-CHANGE-THIS-LINE/${productkey}/g >${tmpdir}/autounattend.xml
+		run 2 mv -f ${tmpdir}/autounattend.xml ${vmpath}/floppy/autounattend.xml
 
 		# unmount the image
 		info 3 "Unmounting the floppy image"
-		# sleep for a while to let the system close the copying process gracefully
-		sleep 3
+		# sync buffers on disk, sleep for a while to let the system close the copying process gracefully
+		run 3 sync
+		run 3 sleep 3
 		run 3 umount ${vmpath}/floppy
 
 		# removing the 'floppy' directory
@@ -270,7 +272,55 @@ function create_vfd()
 		run 3 "rm -rf ${vmpath}/floppy"
 		;;
 	"OSX")
-		hdiutil create -megabytes 2 -fs MS-DOS ${vmpath}/input/unattend.img
+		local floppyname="WINFLOPPY"
+
+		# create a 2MB empty file
+		info 3 "Creating empty floppy image file"
+		run 3 dd if=/dev/zero of=${vmpath}/unattend.img bs=1024 count=2048
+
+		# make the filesystem and mount it
+
+		info 3 "Attaching image"
+		local diskname=`hdiutil attach -nomount ${vmpath}/unattend.img | tail -n 1 | awk '{print $1}'`
+
+		info 3 "Erasing volume"
+		run 3 diskutil eraseVolume MS-DOS ${floppyname} ${diskname}
+
+		# recursively copy all assets
+		info 3 "Copying assets to the floppy drive"
+		run 3 cp -R ${assetsdir}/* /Volumes/${floppyname}/
+		run 3 cp -R glazier-scripts/* /Volumes/${floppyname}/
+
+		# copying csv files
+		info 3 "Moving argument list csv file to the floppy"
+		run 3 mv -f ${tmpdir}/args.csv /Volumes/${floppyname}/
+
+		# putting OS* env variables on the floppy
+		info 3 "Copying environment variables to the floppy"
+		echo name,value>${vmpath}/floppy/env.csv
+		echo OS_REGION_NAME,${OS_REGION_NAME} >>/Volumes/${floppyname}/env.csv
+		echo OS_TENANT_ID,${OS_TENANT_ID} >>/Volumes/${floppyname}/env.csv
+		echo OS_PASSWORD,${OS_PASSWORD} >>/Volumes/${floppyname}/env.csv
+		echo OS_USERNAME,${OS_USERNAME} >>/Volumes/${floppyname}/env.csv
+		echo OS_TENANT_NAME,${OS_TENANT_NAME} >>/Volumes/${floppyname}/env.csv
+		echo OS_AUTH_URL,${OS_AUTH_URL} >>/Volumes/${floppyname}/env.csv
+
+		# put the product key in autounattend.xml
+		info 3 "Replacing product key in autounattend.xml"
+		cat ${assetsdir}/autounattend.xml | sed s/PRODUCT-KEY-DO-NOT-CHANGE-THIS-LINE/${productkey}/g >${tmpdir}/autounattend.xml
+		run 2 mv -f ${tmpdir}/autounattend.xml /Volumes/${floppyname}/autounattend.xml
+
+		# unmount the image
+		info 3 "Unmounting the floppy image"
+		# sync buffers on disk, sleep for a while to let the system close the copying process gracefully
+		run 3 sync
+		run 3 sleep 3
+		run 3 umount /Volumes/${floppyname}/
+		run 3 sleep 3		
+
+		# removing the 'floppy' directory
+		info 3 "Removing floppy directory"
+		run 3 "rm -rf ${vmpath}/floppy"
 		;;
 	esac
 }
@@ -329,13 +379,27 @@ function validate_prerequisites()
 	fi
 
 	# check if mkfs.vfat is installed
-	info 3 "Checking if mkfs.vfat is installed"
-	which mkfs.vfat >/dev/null
-	if [ $? -ne 0 ];
-	then
-		error 1 "mkfs.vfat is not installed. Exiting..."
-		exit 1
-	fi
+	case "$os_type" in
+	"Linux")
+		info 3 "Checking if mkfs.vfat is installed"
+		which mkfs.vfat >/dev/null
+		if [ $? -ne 0 ];
+		then
+			error 1 "mkfs.vfat is not installed. Exiting..."
+			exit 1
+		fi
+		;;
+	"OSX")
+		info 3 "Checking if hdiutil is installed"
+		which hdiutil >/dev/null
+		if [ $? -ne 0 ];
+		then
+			error 1 "hdiutil is not installed. Exiting..."
+			exit 1
+		fi
+		;;
+	esac
+
 
 	# check if windows_iso exists
 	info 3 "Checking if Windows iso exists"
@@ -402,6 +466,14 @@ function validate_prerequisites()
 	then
 		info 3 "It doesn't exist, create it"
 		run 3 mkdir -p ${vmpath}/output
+	fi
+
+	# check if the floppy directory exists
+	info 3 "Checking for temporary floppy directory"
+	if [ ! -d "${vmpath}/floppy" ];
+	then
+		info 3 "Creating temporary floppy directory"
+		run 3 mkdir ${vmpath}/floppy
 	fi
 
 	# check if the temporary directory exists
@@ -671,19 +743,6 @@ function expand_paths()
 
 
 
-# customizez autounattend.xml. This gets called from create_vfd
-function customize_autounattend()
-{
-	if [ -e "${assetsdir}/autounattend.xml" ];
-	then
-		run 2 sed -i s/\"PRODUCT-KEY-DO-NOT-CHANGE-THIS-LINE\"/\"${productkey}\"/g ${vmpath}/floppy/autounattend.xml
-	else
-		# there is no autounattend.xml template, exit
-		error 1 "Cannot find the file ${assetsdir}/autounattend.xml"
-		exit 1
-	fi
-}
-
 # creates the windows image in virtualbox.
 function run_virtualbox()
 {
@@ -732,18 +791,18 @@ function run_virtualbox()
 
 	info 3 "Attach ISO to DVD"
 	run 2 VBoxManage storageattach ${vmname} --storagectl "SATA" --port 0 --type dvddrive --medium ${windows_iso}
-#	run 2 VBoxManage storageattach ${vmname} --storagectl "SATA" --port 1 --type dvddrive --medium ${builder_iso}
-	run 2 VBoxManage storageattach ${vmname} --storagectl "SATA" --port 2 --type dvddrive --medium ${virtio_iso}
+	[ ! -z "${virtio_iso}" ] && run 2 VBoxManage storageattach ${vmname} --storagectl "SATA" --port 1 --type dvddrive --medium ${virtio_iso}
+	[ ! -z "${sqlserver_iso}" ] && run 2 VBoxManage storageattach ${vmname} --storagectl "SATA" --port 2 --type dvddrive --medium ${sqlserver_iso}
 
-	run 2 VBoxManage sharedfolder add ${vmname} --name output --hostpath ${vmpath}/output --automount
+	# mount shared folder
+#	run 2 VBoxManage sharedfolder add ${vmname} --name output --hostpath ${vmpath}/output --automount
 
 	run 2 VBoxManage modifyvm ${vmname} --boot1 disk
 	run 2 VBoxManage modifyvm ${vmname} --boot2 dvd
 	run 2 VBoxManage modifyvm ${vmname} --boot3 none
 	run 2 VBoxManage modifyvm ${vmname} --boot4 none
 
-	info 3 "Bridging eth0 to the virtual machine's network adapter"
-#	run 2 VBoxManage modifyvm ${vmname} --nic1 bridged --cableconnected1 on --bridgeadapter1 ${bridgeadapter}
+	info 3 "Binding eth0 to the virtual machine (NAT)"
 	run 2 VBoxManage modifyvm ${vmname} --nic1 nat --cableconnected1 on
 	run 2 VBoxManage modifyvm ${vmname} --memory 4096
 	run 2 VBoxManage modifyvm ${vmname} --clipboard bidirectional
@@ -751,16 +810,15 @@ function run_virtualbox()
 	run 2 VBoxManage startvm ${vmname}
 
 	#run 2 VBoxManage guestcontrol  ${vmname} updateadditions --source /Applications/VirtualBox.app/Contents/MacOS/VBoxGuestAdditions.iso --verbose
-
 }
 
 
 
 
 parse_parameters $*
+get_os
 expand_paths
 set_colors
-get_os
 validate_environment_vars
 validate_net_connectivity
 validate_prerequisites

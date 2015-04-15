@@ -87,12 +87,18 @@ It generates an `unattend.xml` file that installs Windows and runs a script when
 
 It creates a `glazier vm` by generating a vbox configuration file and boots it using `VBoxManage`. The `glazier vm` will have all ISOs mounted in a predictable order, so the drive letters available in the guest os are consistent each time the `glazier vm` is booted.
 
+The following drive letters are assigned:
+D: = Windows iso
+E: = virtio iso
+F: = SQL Server iso
+
 ###The unattend.xml file
 
 The unattend xml file must do the following:
 
 - Use a product key to activate Windows, if one was specified
 - Configure Windows to always run a "shell.ps1" from the builder.img drive as the default shell for windows
+This is specified in autounattend.xml, at the end of the file, in a RunSynchronousCommand block. Right now, the `A:\shell.ps1` script is run.
 
 ###Arguments
 
