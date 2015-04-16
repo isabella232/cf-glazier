@@ -107,10 +107,19 @@ function WaitFor-VMShutdown{[CmdletBinding()]param($vmName)
 }
 
 # Boot a VM using the created image (it will install Windows unattended)
-function Boot-VM{[CmdletBinding()]param($vmName, $imageName, $keyName, $securityGroup, $networkId)
+function Boot-VM{[CmdletBinding()]param($vmName, $imageName, $keyName, $securityGroup, $networkId, $flavor, $userData)
   Write-Verbose "Booting VM '${vmName}' ..."
 
-  $bootVMProcess = Start-Process -Wait -PassThru -NoNewWindow $novaBin "boot --flavor `"${flavor}`" --image `"${imageName}`" --key-name `"${keyName}`" --security-groups `"${securityGroup}`" --nic net-id=${networkId} `"${vmName}`""
+  if($userData -ne $null)
+  {
+    $userDataStr = "--user-data `"${userData}`""
+  }
+  else
+  {
+    $userDataStr = ""
+  }
+  
+  $bootVMProcess = Start-Process -Wait -PassThru -NoNewWindow $novaBin "boot --flavor `"${flavor}`" --image `"${imageName}`" --key-name `"${keyName}`" --security-groups `"${securityGroup}`" ${userDataStr} --nic net-id=${networkId} `"${vmName}`""
 
   if ($bootVMProcess.ExitCode -ne 0)
   {
