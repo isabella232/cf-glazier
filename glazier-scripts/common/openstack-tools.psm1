@@ -1,3 +1,6 @@
+$currentDir = split-path $SCRIPT:MyInvocation.MyCommand.Path -parent
+
+Import-Module -DisableNameChecking (Join-Path $currentDir './utils.psm1')
 
 $pythonDir = Join-Path $env:SYSTEMDRIVE 'Python27'
 $pythonScriptDir = Join-Path $pythonDir 'Scripts'
@@ -10,24 +13,73 @@ function Verify-PythonClientsInstallation{[CmdletBinding()]param()
 }
 
 function Install-PythonClients{[CmdletBinding()]param()
-  # Download and install VC for Python from
-  #wget 'http://www.microsoft.com/en-us/download/details.aspx?id=44266'
-  #$installProcess = Start-Process -Wait -PassThru -NoNewWindow $novaBin "delete `"${vmName}`""
-  #msiexec /quiet /i VCForPython27.msi
 
-  #Download and install Python from
-  #wget 'https://www.python.org/ftp/python/2.7.8/python-2.7.8.amd64.msi'
-  #msiexec /quiet /i python-2.7.8.amd64.msi
+  $vcforPythonInstaller = Join-Path $env:temp "VCForPython27.msi"
+  $pythonInstaller = Join-Path $env:temp "Python.msi"
 
-  # Install easy_install by running this:
-  #(Invoke-WebRequest https://bootstrap.pypa.io/ez_setup.py).Content | python -
+  try
+  {
+
+  # Download and install VC for Python
+  Write-Output "Downloading VC for Python ..."
+  Download-File 'http://download.microsoft.com/download/7/9/6/796EF2E4-801B-4FC4-AB28-B59FBF6D907B/VCForPython27.msi' $vcforPythonInstaller
+  Write-Output "Installing VC for Python ..."
+  $installProcess = Start-Process -Wait -PassThru -NoNewWindow msiexec "/quiet /i ${vcforPythonInstaller}"
+  if ($installProcess.ExitCode -ne 0)
+  {
+    throw 'Installing VC for Python failed.'
+  }
+  
+  #Download and install Python
+  Write-Output "Downloading Python ..."
+  Download-File 'https://www.python.org/ftp/python/2.7.8/python-2.7.8.amd64.msi' $pythonInstaller
+  Write-Output "Installing Python ..."
+  $installProcess = Start-Process -Wait -PassThru -NoNewWindow msiexec "/quiet /i ${pythonInstaller} TARGETDIR=`"${pythonDir}`""
+  if ($installProcess.ExitCode -ne 0)
+  {
+    throw 'Installing Python failed.'
+  }
+
+  $env:Path = $env:Path + ";${pythonDir};${pythonScriptDir}"
+
+  # Install easy_install
+  Write-Output "Installing easy_install ..."  
+  (Invoke-WebRequest https://bootstrap.pypa.io/ez_setup.py).Content | python -
 
   # Install pip
-  # c:\Python27\Scripts\easy_install.exe pip
+  Write-Output "Installing pip ..."
+  $installProcess = Start-Process -Wait -PassThru -NoNewWindow "${pythonScriptDir}\easy_install.exe" "pip"
+  if ($installProcess.ExitCode -ne 0)
+  {
+    throw 'Installing pip for Python failed.'
+  }
 
-  # Install the clients:
-  # c:\python27\scripts\pip.exe install python-novaclient
-  # c:\python27\scripts\pip.exe install python-glanceclient
+  # Install the clients
+  Write-Output "Installing python-novaclient ..."
+  $installProcess = Start-Process -Wait -PassThru -NoNewWindow "${pythonScriptDir}\pip.exe" "install python-novaclient"
+  if ($installProcess.ExitCode -ne 0)
+  {
+    throw 'Installing novaclient failed.'
+  }
+
+  Write-Output "Installing python-glanceclient ..."
+  $installProcess = Start-Process -Wait -PassThru -NoNewWindow "${pythonScriptDir}\pip.exe" "install python-glanceclient"
+  if ($installProcess.ExitCode -ne 0)
+  {
+    throw 'Installing glanceclient failed.'
+  }
+  Write-Output "Done"
+
+  }
+  finally
+  {
+    If (Test-Path $vcforPythonInstaller){
+	  Remove-Item $vcforPythonInstaller
+    }   
+    If (Test-Path $pythonInstaller){
+      Remove-Item $pythonInstaller -Force
+    }
+  }
 }
 
 function Check-OpenRCEnvVars{[CmdletBinding()]param()
@@ -107,10 +159,19 @@ function WaitFor-VMShutdown{[CmdletBinding()]param($vmName)
 }
 
 # Boot a VM using the created image (it will install Windows unattended)
-function Boot-VM{[CmdletBinding()]param($vmName, $imageName, $keyName, $securityGroup, $networkId)
+function Boot-VM{[CmdletBinding()]param($vmName, $imageName, $keyName, $securityGroup, $networkId, $flavor, $userData)
   Write-Verbose "Booting VM '${vmName}' ..."
 
-  $bootVMProcess = Start-Process -Wait -PassThru -NoNewWindow $novaBin "boot --flavor `"${flavor}`" --image `"${imageName}`" --key-name `"${keyName}`" --security-groups `"${securityGroup}`" --nic net-id=${networkId} `"${vmName}`""
+  if($userData -ne $null)
+  {
+    $userDataStr = "--user-data `"${userData}`""
+  }
+  else
+  {
+    $userDataStr = ""
+  }
+  
+  $bootVMProcess = Start-Process -Wait -PassThru -NoNewWindow $novaBin "boot --flavor `"${flavor}`" --image `"${imageName}`" --key-name `"${keyName}`" --security-groups `"${securityGroup}`" ${userDataStr} --nic net-id=${networkId} `"${vmName}`""
 
   if ($bootVMProcess.ExitCode -ne 0)
   {

@@ -151,26 +151,145 @@ function Initialize-Image {
 function Push-Resources {
   <#
   .SYNOPSIS
-      Glazier Upload-Resources commandlet
+      Glazier Push-Resources commandlet
   .DESCRIPTION
       Uploads resources for a glazier profile to an existing Windows Server 2012 R2 image that is available on OpenStack glance
-  .PARAMETER GlazierProfile
-      Array of paths to glazier profile directories
+  .PARAMETER GlazierProfilePath
+      Path to the glazier profile directory
+  .PARAMETER VmName
+      Name of the VM to boot
+  .PARAMETER KeyName
+      Key name of ssh keypair
+  .PARAMETER SecurityGroup
+      Comma separated list of security group names
+  .PARAMETER NetworkId
+      UUID of the network
+  .PARAMETER Image
+      Name or ID of the image used to boot the VM
+  .PARAMETER SnapshotImageName
+      Name of Snapshot to be created
+  .PARAMETER Flavor
+      Name or ID of the flavor
+  .PARAMETER HttpProxy
+      Http host address proxy used for downloading files
+  .PARAMETER HttpsProxy
+      Https host address for proxy used for downloading files
   .NOTES
       Author: Hewlett-Packard Development Company
       Date:   April 8, 2015
   .EXAMPLE
-  Create-Image -Name "Windows 2012 R2 Core"
+  Push-Resources -GlazierProfilePath c:\myprofile -VmName Win2012 -KeyName private-ssh-key -SecurityGroup security-group -NetworkId uuid -Image uuid -SnapshotImageName win-snapshot -Flavor standard.medium
   #>
-  [CmdletBinding()]
+[CmdletBinding()]
   param(
-    [string]$GlazierProfile,
-    [string]$ImageName,
-    [string]$ImageId,
-    [string]$HttpProxy,
-    [string]$HttpsProxy
+    [Parameter(Mandatory=$true)]
+    [string]$GlazierProfilePath,
+    [Parameter(Mandatory=$true)]
+    [string]$VmName,
+    [Parameter(Mandatory=$true)]
+    [string]$KeyName,
+    [Parameter(Mandatory=$true)]
+    [string]$SecurityGroup,
+    [Parameter(Mandatory=$true)]
+    [string]$NetworkId,  
+    [Parameter(Mandatory=$true)]  
+    [string]$Image,
+    [Parameter(Mandatory=$true)]
+    [string]$SnapshotImageName,
+    [Parameter(Mandatory=$true)]
+    [string]$Flavor,
+    [string]$HttpProxy=$null,
+    [string]$HttpsProxy=$null
   )
+ 
+ try{
+    $glazierProfile = Get-GlazierProfile $GlazierProfilePath
+    Write-Verbose "Generating user-data script"
+    $stringBuilder = New-Object System.Text.StringBuilder
+    $stringBuilder.AppendLine("#ps1")
+    $stringBuilder.AppendLine(@'
+function Download-File{[CmdletBinding()]param($url, $targetFile, $proxy)
+  Write-Verbose "Downloading '${url}' to '${targetFile}'"
+  $uri = New-Object "System.Uri" "$url"
+  $request = [System.Net.HttpWebRequest]::Create($uri)
+  if($proxy -ne $null)
+  {
+    $request.Proxy = $proxy
+  }
+  $request.set_Timeout(15000) #15 second timeout
+  $response = $request.GetResponse()
+  $totalLength = [System.Math]::Floor($response.get_ContentLength()/1024)
+  $responseStream = $response.GetResponseStream()
+  $targetStream = New-Object -TypeName System.IO.FileStream -ArgumentList $targetFile, Create
+  $buffer = new-object byte[] 10KB
+  $count = $responseStream.Read($buffer,0,$buffer.length)
+  $downloadedBytes = $count
+  $sw = [System.Diagnostics.Stopwatch]::StartNew()
 
+  while ($count -gt 0)
+  {
+     $targetStream.Write($buffer, 0, $count)
+     $count = $responseStream.Read($buffer,0,$buffer.length)
+     $downloadedBytes = $downloadedBytes + $count
+
+     if ($sw.Elapsed.TotalMilliseconds -ge 500) {
+       $activity = "Downloading file '$($url.split('/') | Select -Last 1)'"
+       $status = "Downloaded ($([System.Math]::Floor($downloadedBytes/1024))K of $($totalLength)K): "
+       $percentComplete = ((([System.Math]::Floor($downloadedBytes/1024)) / $totalLength)  * 100)
+       Write-Progress -activity $activity -status $status -PercentComplete $percentComplete
+
+       $sw.Reset();
+       $sw.Start()
+    }
+  }
+
+  Write-Progress -activity "Finished downloading file '$($url.split('/') | Select -Last 1)'" -status "Done"
+  $targetStream.Flush()
+  $targetStream.Close()
+  $targetStream.Dispose()
+  $responseStream.Dispose()
+}
+'@)
+    
+    $stringBuilder.AppendLine("`$destDir = `$env:SystemDrive")  
+    $csv = Import-Csv $glazierProfile.ResourcesCSVFile
+    $userData = [System.IO.Path]::GetTempFileName()
+    if(![string]::IsNullOrEmpty($HttpProxy))
+    {
+      $stringBuilder.AppendLine("`$proxy = new-object System.Net.WebProxy -ArgumentList `"${HttpProxy}`"")
+    }
+    elseif (![string]::IsNullOrEmpty($HttpsProxy))
+    {
+      $stringBuilder.AppendLine("`$proxy = new-object System.Net.WebProxy -ArgumentList `"${HttpsProxy}`", 433")
+    }
+    else
+    {
+      $stringBuilder.AppendLine("`$proxy = `$null")
+    }
+
+    Foreach ($line in $csv)
+    {
+      $localFileName = [System.IO.Path]::GetFileNameWithoutExtension(($line.path -replace '[-_]',''))
+      $stringBuilder.AppendLine("`$${localFileName}Path = Join-Path `$destDir `"$($line.path)`"")
+      $stringBuilder.AppendLine("New-Item -ItemType Directory -Force -Path ([System.IO.Path]::GetDirectoryName(`$${localFileName}Path))")
+      $stringBuilder.AppendLine("Download-File -url `"$($line.uri)`" -targetFile `$${localFileName}Path -proxy `$proxy")
+    }
+
+    $stringBuilder.AppendLine("shutdown /s /t 100")
+    $stringBuilder.ToString() | Out-File $userData -Encoding ascii
+  
+    Boot-VM $VmName $Image $KeyName $SecurityGroup $NetworkId $Flavor $userData
+
+    WaitFor-VMShutdown $VmName
+    
+    Write-Verbose "Creating VM Snapshot ${SnapshotImageName}"
+    Create-VMSnapshot $VmName $SnapshotImageName
+  }
+  finally{
+    If (Test-Path $userData){
+	  Remove-Item $userData
+    }    
+  }
 }
 
 Export-ModuleMember -Function 'Initialize-Image', 'Push-Resources', 'New-Image'
