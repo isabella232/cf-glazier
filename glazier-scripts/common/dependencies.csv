@@ -1,5 +1,7 @@
 name,uri
 qemu-img,http://lassauge.free.fr/qemu/release/Qemu-2.2.0-windows.zip
-vc-python,http://download.microsoft.com/download/7/9/6/796EF2E4-801B-4FC4-AB28-B59FBF6D907B/VCForPython27.msi
-python,https://www.python.org/ftp/python/2.7.8/python-2.7.8.amd64.msi
+vc-redist,http://download.microsoft.com/download/A/8/0/A80747C3-41BD-45DF-B505-E9710D2744E0/vcredist_x64.exe
+python,https://www.python.org/ftp/python/3.4.3/python-3.4.3.amd64.msi
 easy-install,https://bootstrap.pypa.io/ez_setup.py
+python-novaclient-version,2.23.0
+python-glanceclient-version,0.17.0
