@@ -10,7 +10,7 @@ productkey=""
 use_colors="yes"
 windows_iso="~/Downloads/en_windows_server_2012_r2_with_update_x64_dvd_6052708.iso"
 sqlserver_iso=""
-virtio_iso="~/Downloads/"
+virtio_iso="~/Downloads/virtio.iso"
 profiles=""
 sqlserverversion="none"
 assetsdir="assets"
@@ -250,7 +250,15 @@ function create_vfd()
 		echo OS_AUTH_URL,${OS_AUTH_URL} >>${vmpath}/floppy/env.csv
 
 		# create a csv file containing the drive letters for the isos
+		info 3 "Mapping ISOs to drive letters"
 		map_drive_letters D E F G H >${vmpath}/floppy/driveletters.csv
+
+		# check if env var OS_CACERT is set and if so, copy the file on the floppy if it exists
+		if [ ! -z "${OS_CACERT}" -a -e "${OS_CACERT}" ];
+		then
+			info 3 "OS_CACERT is set and the file exists. Copying it to the floppy"
+			run 3 cp "${OS_CACERT}" ${vmpath}/floppy/cacert
+		fi
 
 		# put the product key in autounattend.xml
 		info 3 "Replacing product key in autounattend.xml"
@@ -302,7 +310,15 @@ function create_vfd()
 		echo OS_AUTH_URL,${OS_AUTH_URL} >>/Volumes/${floppyname}/env.csv
 
 		# create a csv file containing the drive letters for the isos
+		info 3 "Mapping ISOs to drive letters"
 		map_drive_letters D E F G H >/Volumes/${floppyname}/driveletters.csv
+
+		# check if env var OS_CACERT is set and if so, copy the file on the floppy if it exists
+		if [ ! -z "${OS_CACERT}" -a -e "${OS_CACERT}" ];
+		then
+			info 3 "OS_CACERT is set and the file exists. Copying it to the floppy"
+			run 3 cp "${OS_CACERT}" /Volumes/${floppyname}/cacert
+		fi
 
 		# put the product key in autounattend.xml
 		info 3 "Replacing product key in autounattend.xml"
