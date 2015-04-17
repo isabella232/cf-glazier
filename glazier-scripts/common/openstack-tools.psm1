@@ -2,90 +2,182 @@ $currentDir = split-path $SCRIPT:MyInvocation.MyCommand.Path -parent
 
 Import-Module -DisableNameChecking (Join-Path $currentDir './utils.psm1')
 
-$pythonDir = Join-Path $env:SYSTEMDRIVE 'Python27'
+$pythonDir = Join-Path $env:SYSTEMDRIVE 'Python34'
 $pythonScriptDir = Join-Path $pythonDir 'Scripts'
 $glanceBin = Join-Path $pythonScriptDir 'glance.exe'
 $novaBin = Join-Path $pythonScriptDir 'nova.exe'
 
 
 function Verify-PythonClientsInstallation{[CmdletBinding()]param()
-
+    return ((Check-NovaClient) -and (Check-GlanceClient))
 }
 
 function Install-PythonClients{[CmdletBinding()]param()
+    Write-Output "Installing Python clients"
+    Install-VCRedist
+    Install-Python
+    Install-EasyInstall
+    Install-Pip
+    Install-NovaClient
+    Install-GlanceClient
+    Write-Output "Done"
+}
 
-  $vcforPythonInstaller = Join-Path $env:temp "VCForPython27.msi"
-  $pythonInstaller = Join-Path $env:temp "Python.msi"
+function Check-VCRedist{[CmdletBinding()]param()
+    return ((Get-ItemProperty HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\* | where DisplayName -like "*Visual C++ 2010*x64*") -ne $null)
+}
 
-  try
-  {
-    # Download and install VC for Python
-    Write-Output "Downloading VC for Python ..."
-    $vcPythonUrl = Get-Dependency 'vc-python'
-    Download-File $vcPythonUrl $vcforPythonInstaller
-    Write-Output "Installing VC for Python ..."
-    $installProcess = Start-Process -Wait -PassThru -NoNewWindow msiexec "/quiet /i ${vcforPythonInstaller}"
-    if ($installProcess.ExitCode -ne 0)
+function Install-VCRedist{[CmdletBinding()]param()
+    if(Check-VCRedist)
     {
-      throw 'Installing VC for Python failed.'
+        Write-Output "VC++ 2010 Redistributable already installed"
+        return
     }
 
-    #Download and install Python
-    Write-Output "Downloading Python ..."
-    $pythonUrl = Get-Dependency 'python'
-    Download-File $pythonUrl $pythonInstaller
-
-    Write-Verbose "Trying to uninstall python if it's already there ..."
-    Start-Process -Wait -PassThru -NoNewWindow msiexec "/quiet /x ${pythonInstaller}"
-
-    Write-Output "Installing Python ..."
-    $installProcess = Start-Process -Wait -PassThru -NoNewWindow msiexec "/quiet /i ${pythonInstaller} TARGETDIR=`"${pythonDir}`""
-    if ($installProcess.ExitCode -ne 0)
+    try
     {
-      throw 'Installing Python failed.'
+        $vcInstaller = Join-Path $env:temp "vcredist_x64.exe"
+        Write-Output "Downloading VC Redistributable ..."
+        $vcRedistUrl = Get-Dependency "vc-redist"
+        Download-File $vcRedistUrl $vcInstaller
+        $installProcess = Start-Process -Wait -PassThru -NoNewWindow $vcInstaller "/q /norestart"
+        if (($installProcess.ExitCode -ne 0) -or !(Check-VCRedist))
+        {
+            throw 'Installing VC++ 2010 Redist failed.'
+        }
+    
+        Write-Output "Finished installing VC++ Redistributable"
+    }
+    finally
+    {
+        If (Test-Path $vcInstaller){
+	      Remove-Item $vcInstaller
+        }
+    }
+}
+
+function Check-Python{[CmdletBinding()]param()
+    return (Test-Path (Join-Path $pythonDir "python.exe"))
+}
+
+function Install-Python{[CmdletBinding()]param()
+    if(Check-Python)
+    {
+        Write-Output "Python already installed"
+        return
     }
 
+    try
+    {
+        Write-Output "Downloading Python ..."
+        $pythonUrl = Get-Dependency "python"        
+        $pythonInstaller = Join-Path $env:temp "Python.msi"
+        Download-File $pythonUrl $pythonInstaller
+        Write-Output "Installing Python ..."
+        $installProcess = Start-Process -Wait -PassThru -NoNewWindow msiexec "/quiet /i ${pythonInstaller} TARGETDIR=`"${pythonDir}`""
+        if (($installProcess.ExitCode -ne 0) -or !(Check-Python))
+        {
+            throw 'Installing Python failed.'
+        }
+    
+        Write-Output "Finished installing Python"
+    }
+    finally
+    {
+        If (Test-Path $pythonInstaller){
+          Remove-Item $pythonInstaller -Force
+        }
+    }
+}
+
+function Check-EasyInstall{[CmdletBinding()]param()
+    return (Test-Path (Join-Path $pythonScriptDir "easy_install.exe"))
+}
+
+function Install-EasyInstall{[CmdletBinding()]param()
+    if(Check-EasyInstall)
+    {
+        Write-Output "EasyInstall already installed"
+        return
+    }
+    
     $env:Path = $env:Path + ";${pythonDir};${pythonScriptDir}"
 
-    # Install easy_install
     Write-Output "Installing easy_install ..."
-    $easyInstallUrl = Get-Dependency 'easy-install'
-    (Invoke-WebRequest $easyInstallUrl).Content | python -
 
-    # Install pip
+    $easyInstallUrl = Get-Dependency "easy-install"
+
+    (Invoke-WebRequest $easyInstallUrl).Content | python -
+    if(!(Check-EasyInstall))
+    {
+        throw "EasyInstall installation failed"
+    }
+
+    Write-Output "Finished installing EasyInstall"
+}
+
+function Check-Pip{[CmdletBinding()]param()
+    return (Test-Path (Join-Path $pythonScriptDir "pip.exe"))
+}
+
+function Install-Pip{[CmdletBinding()]param()
+    if(Check-Pip)
+    {
+        Write-Output "Pip already installed"
+        return
+    }
     Write-Output "Installing pip ..."
     $installProcess = Start-Process -Wait -PassThru -NoNewWindow "${pythonScriptDir}\easy_install.exe" "pip"
-    if ($installProcess.ExitCode -ne 0)
+    if (($installProcess.ExitCode -ne 0) -or !(Check-Pip))
     {
-      throw 'Installing pip for Python failed.'
+        throw 'Installing pip for Python failed.'
     }
 
-    # Install the clients
-    Write-Output "Installing python-novaclient ..."
-    $installProcess = Start-Process -Wait -PassThru -NoNewWindow "${pythonScriptDir}\pip.exe" "install python-novaclient"
-    if ($installProcess.ExitCode -ne 0)
-    {
-      throw 'Installing novaclient failed.'
-    }
-
-    Write-Output "Installing python-glanceclient ..."
-    $installProcess = Start-Process -Wait -PassThru -NoNewWindow "${pythonScriptDir}\pip.exe" "install python-glanceclient"
-    if ($installProcess.ExitCode -ne 0)
-    {
-      throw 'Installing glanceclient failed.'
-    }
-    Write-Output "Done"
-  }
-  finally
-  {
-    If (Test-Path $vcforPythonInstaller){
-	  Remove-Item $vcforPythonInstaller
-    }
-    If (Test-Path $pythonInstaller){
-      Remove-Item $pythonInstaller -Force
-    }
-  }
+    Write-Output "Finished installing pip"
 }
+
+function Check-NovaClient{[CmdletBinding()]param()
+    return (Test-Path $novaBin)
+}
+
+function Install-NovaClient{[CmdletBinding()]param()
+    if(Check-NovaClient)
+    {
+        Write-Output "NovaClient already installed"
+        return
+    }
+    Write-Output "Installing python-novaclient ..."
+    $novaVersion = Get-Dependency "python-novaclient-version"    
+    $installProcess = Start-Process -Wait -PassThru -NoNewWindow "${pythonScriptDir}\pip.exe" "install python-novaclient==${novaVersion}"
+    if (($installProcess.ExitCode -ne 0) -or !(Check-NovaClient))
+    {
+        throw 'Installing nova client failed.'
+    }
+
+    Write-Output "Finished installing nova client"
+}
+
+function Check-GlanceClient{[CmdletBinding()]param()
+    return (Test-Path $glanceBin)
+}
+
+function Install-GlanceClient{[CmdletBinding()]param()
+    if(Check-GlanceClient)
+    {
+        Write-Output "GlanceClient already installed"
+        return
+    }
+    Write-Output "Installing python-glanceclient ..."
+    $glanceVersion = Get-Dependency "python-glanceclient-version"
+    $installProcess = Start-Process -Wait -PassThru -NoNewWindow "${pythonScriptDir}\pip.exe" "install python-glanceclient==${glanceVersion}"
+    if (($installProcess.ExitCode -ne 0) -or !(Check-GlanceClient))
+    {
+        throw 'Installing glance client failed.'
+    }
+
+    Write-Output "Finished installing glance client"
+}
+
 
 function Check-OpenRCEnvVars{[CmdletBinding()]param()
   #OS_REGION_NAME=region-b.geo-1
