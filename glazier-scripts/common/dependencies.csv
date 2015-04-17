@@ -1,5 +1,5 @@
 name,uri
 qemu-img,http://lassauge.free.fr/qemu/release/Qemu-2.2.0-windows.zip
-vc-python,http://www.microsoft.com/en-us/download/details.aspx?id=44266
+vc-python,http://download.microsoft.com/download/7/9/6/796EF2E4-801B-4FC4-AB28-B59FBF6D907B/VCForPython27.msi
 python,https://www.python.org/ftp/python/2.7.8/python-2.7.8.amd64.msi
 easy-install,https://bootstrap.pypa.io/ez_setup.py

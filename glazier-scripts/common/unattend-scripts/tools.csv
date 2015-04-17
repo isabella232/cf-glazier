@@ -1,5 +1,5 @@
 destination,url
-cloudinit.msi,https://www.cloudbase.it/downloads/CloudbaseInitSetup_Beta_x64.msi
+cloudbaseinit.msi,https://www.cloudbase.it/downloads/CloudbaseInitSetup_Beta_x64.msi
 sdelete.exe,http://download.sysinternals.com/files/SDelete.zip
 pswindowsupdate.zip,https://gallery.technet.microsoft.com/scriptcenter/2d191bcd-3308-4edd-9de2-88dff796b0bc/file/41459/43/PSWindowsUpdate.zip
-ultradefrag.zip,http://downloads.sourceforge.net/ultradefrag/ultradefrag-portable-6.0.2.bin.amd64.zip
+ultradefrag.zip,http://download2.polytechnic.edu.na/pub4/sourceforge/u/project/project/ul/ultradefrag/stable-release/6.0.2/ultradefrag-portable-6.0.2.bin.amd64.zip

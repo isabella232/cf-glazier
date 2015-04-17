@@ -80,6 +80,8 @@ function New-Image {
     Write-Output 'Adding glazier profile to image ...'
     Add-GlazierProfile $vhdMountLetter $glazierProfile
 
+    # TODO: add glazier resources as well, no need to boot the VM once more the first time we create the image
+
     Write-Output 'Adding VirtIO drivers to vhd ...'
     Add-VirtIODriversToImage $vhdMountLetter $VirtIOPath
 
@@ -142,10 +144,58 @@ function Initialize-Image {
   #>
   [CmdletBinding()]
   param(
-    [string]$ImagePath,
+    [string]$Qcow2ImagePath,
     [string]$ImageName,
-    [string]$ImageId
+    [string]$OpenStackKeyName,
+    [string]$OpenStackSecurityGroup,
+    [string]$OpenStackNetworkId
   )
+
+  $tempVMName = "${ImageName}-glazier-temp-instance-DO-NOT-USE"
+  $tempImageName = "{ImageName}-glazier-temp-image-DO-NOT-USE"
+
+  # TODO: load openrc info and validate it
+
+  try
+  {
+    Write-Output "Creating temporary image ..."
+    Create-Image $tempImageName $Qcow2ImagePath
+
+    Write-Output "Booting temporary instance ..."
+    Boot-VM $tempVMName $tempImageName $OpenStackKeyName $OpenStackSecurityGroup $OpenStackNetworkId
+
+    Write-Output "Waiting for temporary instance to finish installation and shut down ..."
+    WaitFor-VMShutdown $tempVMName
+
+    Write-Output "Creating final image ..."
+    Create-VMSnapshot $tempVMName $ImageName
+
+    # TODO: set metadata
+  }
+  finally
+  {
+    try
+    {
+      Write-Output "Deleting temp instance ..."
+      Delete-VMInstance $tempVMName
+    }
+    catch
+    {
+      $errorMessage = $_.Exception.Message
+      Write-Warning "Failed to delete temp instance '${tempVMName}' (it probably doesn't exist): ${errorMessage}"
+    }
+
+    try
+    {
+      Write-Output "Deleting temp image ..."
+      Delete-Image $tempImageName
+    }
+    catch
+    {
+      $errorMessage = $_.Exception.Message
+      Write-Warning "Failed to delete temp image '${tempImageName}' (the image probably doesn't exist): ${errorMessage}"
+    }
+  }
 }
 
 function Push-Resources {
@@ -191,8 +241,8 @@ function Push-Resources {
     [Parameter(Mandatory=$true)]
     [string]$SecurityGroup,
     [Parameter(Mandatory=$true)]
-    [string]$NetworkId,  
-    [Parameter(Mandatory=$true)]  
+    [string]$NetworkId,
+    [Parameter(Mandatory=$true)]
     [string]$Image,
     [Parameter(Mandatory=$true)]
     [string]$SnapshotImageName,
@@ -201,7 +251,7 @@ function Push-Resources {
     [string]$HttpProxy=$null,
     [string]$HttpsProxy=$null
   )
- 
+
  try{
     $glazierProfile = Get-GlazierProfile $GlazierProfilePath
     Write-Verbose "Generating user-data script"
@@ -250,8 +300,8 @@ function Download-File{[CmdletBinding()]param($url, $targetFile, $proxy)
   $responseStream.Dispose()
 }
 '@)
-    
-    $stringBuilder.AppendLine("`$destDir = `$env:SystemDrive")  
+
+    $stringBuilder.AppendLine("`$destDir = `$env:SystemDrive")
     $csv = Import-Csv $glazierProfile.ResourcesCSVFile
     $userData = [System.IO.Path]::GetTempFileName()
     if(![string]::IsNullOrEmpty($HttpProxy))
@@ -277,18 +327,20 @@ function Download-File{[CmdletBinding()]param($url, $targetFile, $proxy)
 
     $stringBuilder.AppendLine("shutdown /s /t 100")
     $stringBuilder.ToString() | Out-File $userData -Encoding ascii
-  
+
     Boot-VM $VmName $Image $KeyName $SecurityGroup $NetworkId $Flavor $userData
 
     WaitFor-VMShutdown $VmName
-    
+
     Write-Verbose "Creating VM Snapshot ${SnapshotImageName}"
     Create-VMSnapshot $VmName $SnapshotImageName
+
+    # TODO: implement setting metadata for image
   }
   finally{
     If (Test-Path $userData){
 	  Remove-Item $userData
-    }    
+    }
   }
 }
 

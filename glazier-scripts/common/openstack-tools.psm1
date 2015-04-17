@@ -19,63 +19,68 @@ function Install-PythonClients{[CmdletBinding()]param()
 
   try
   {
+    # Download and install VC for Python
+    Write-Output "Downloading VC for Python ..."
+    $vcPythonUrl = Get-Dependency 'vc-python'
+    Download-File $vcPythonUrl $vcforPythonInstaller
+    Write-Output "Installing VC for Python ..."
+    $installProcess = Start-Process -Wait -PassThru -NoNewWindow msiexec "/quiet /i ${vcforPythonInstaller}"
+    if ($installProcess.ExitCode -ne 0)
+    {
+      throw 'Installing VC for Python failed.'
+    }
 
-  # Download and install VC for Python
-  Write-Output "Downloading VC for Python ..."
-  Download-File 'http://download.microsoft.com/download/7/9/6/796EF2E4-801B-4FC4-AB28-B59FBF6D907B/VCForPython27.msi' $vcforPythonInstaller
-  Write-Output "Installing VC for Python ..."
-  $installProcess = Start-Process -Wait -PassThru -NoNewWindow msiexec "/quiet /i ${vcforPythonInstaller}"
-  if ($installProcess.ExitCode -ne 0)
-  {
-    throw 'Installing VC for Python failed.'
-  }
-  
-  #Download and install Python
-  Write-Output "Downloading Python ..."
-  Download-File 'https://www.python.org/ftp/python/2.7.8/python-2.7.8.amd64.msi' $pythonInstaller
-  Write-Output "Installing Python ..."
-  $installProcess = Start-Process -Wait -PassThru -NoNewWindow msiexec "/quiet /i ${pythonInstaller} TARGETDIR=`"${pythonDir}`""
-  if ($installProcess.ExitCode -ne 0)
-  {
-    throw 'Installing Python failed.'
-  }
+    #Download and install Python
+    Write-Output "Downloading Python ..."
+    $pythonUrl = Get-Dependency 'python'
+    Download-File $pythonUrl $pythonInstaller
 
-  $env:Path = $env:Path + ";${pythonDir};${pythonScriptDir}"
+    Write-Verbose "Trying to uninstall python if it's already there ..."
+    Start-Process -Wait -PassThru -NoNewWindow msiexec "/quiet /x ${pythonInstaller}"
 
-  # Install easy_install
-  Write-Output "Installing easy_install ..."  
-  (Invoke-WebRequest https://bootstrap.pypa.io/ez_setup.py).Content | python -
+    Write-Output "Installing Python ..."
+    $installProcess = Start-Process -Wait -PassThru -NoNewWindow msiexec "/quiet /i ${pythonInstaller} TARGETDIR=`"${pythonDir}`""
+    if ($installProcess.ExitCode -ne 0)
+    {
+      throw 'Installing Python failed.'
+    }
 
-  # Install pip
-  Write-Output "Installing pip ..."
-  $installProcess = Start-Process -Wait -PassThru -NoNewWindow "${pythonScriptDir}\easy_install.exe" "pip"
-  if ($installProcess.ExitCode -ne 0)
-  {
-    throw 'Installing pip for Python failed.'
-  }
+    $env:Path = $env:Path + ";${pythonDir};${pythonScriptDir}"
 
-  # Install the clients
-  Write-Output "Installing python-novaclient ..."
-  $installProcess = Start-Process -Wait -PassThru -NoNewWindow "${pythonScriptDir}\pip.exe" "install python-novaclient"
-  if ($installProcess.ExitCode -ne 0)
-  {
-    throw 'Installing novaclient failed.'
-  }
+    # Install easy_install
+    Write-Output "Installing easy_install ..."
+    $easyInstallUrl = Get-Dependency 'easy-install'
+    (Invoke-WebRequest $easyInstallUrl).Content | python -
 
-  Write-Output "Installing python-glanceclient ..."
-  $installProcess = Start-Process -Wait -PassThru -NoNewWindow "${pythonScriptDir}\pip.exe" "install python-glanceclient"
-  if ($installProcess.ExitCode -ne 0)
-  {
-    throw 'Installing glanceclient failed.'
-  }
-  Write-Output "Done"
+    # Install pip
+    Write-Output "Installing pip ..."
+    $installProcess = Start-Process -Wait -PassThru -NoNewWindow "${pythonScriptDir}\easy_install.exe" "pip"
+    if ($installProcess.ExitCode -ne 0)
+    {
+      throw 'Installing pip for Python failed.'
+    }
 
+    # Install the clients
+    Write-Output "Installing python-novaclient ..."
+    $installProcess = Start-Process -Wait -PassThru -NoNewWindow "${pythonScriptDir}\pip.exe" "install python-novaclient"
+    if ($installProcess.ExitCode -ne 0)
+    {
+      throw 'Installing novaclient failed.'
+    }
+
+    Write-Output "Installing python-glanceclient ..."
+    $installProcess = Start-Process -Wait -PassThru -NoNewWindow "${pythonScriptDir}\pip.exe" "install python-glanceclient"
+    if ($installProcess.ExitCode -ne 0)
+    {
+      throw 'Installing glanceclient failed.'
+    }
+    Write-Output "Done"
   }
   finally
   {
     If (Test-Path $vcforPythonInstaller){
 	  Remove-Item $vcforPythonInstaller
-    }   
+    }
     If (Test-Path $pythonInstaller){
       Remove-Item $pythonInstaller -Force
     }
@@ -170,7 +175,7 @@ function Boot-VM{[CmdletBinding()]param($vmName, $imageName, $keyName, $security
   {
     $userDataStr = ""
   }
-  
+
   $bootVMProcess = Start-Process -Wait -PassThru -NoNewWindow $novaBin "boot --flavor `"${flavor}`" --image `"${imageName}`" --key-name `"${keyName}`" --security-groups `"${securityGroup}`" ${userDataStr} --nic net-id=${networkId} `"${vmName}`""
 
   if ($bootVMProcess.ExitCode -ne 0)
@@ -184,7 +189,7 @@ function Boot-VM{[CmdletBinding()]param($vmName, $imageName, $keyName, $security
 }
 
 # Update an image with the specified property
-function UpdateImageProperty{[CmdletBinding()]param($imageName, $propertyName, $propertyValue)
+function Update-ImageProperty{[CmdletBinding()]param($imageName, $propertyName, $propertyValue)
   Write-Verbose "Updating property '${propertyName}' for image '${imageName}' using glance ..."
   $updateImageProcess = Start-Process -Wait -PassThru -NoNewWindow $glanceBin "image-update --property ${propertyName}=${propertyValue} `"${imageName}`""
   if ($updateImageProcess.ExitCode -ne 0)
@@ -198,7 +203,7 @@ function UpdateImageProperty{[CmdletBinding()]param($imageName, $propertyName, $
 }
 
 # Create an image based on the generated qcow2
-function CreateImage{[CmdletBinding()]param($imageName, $localQCOW2Image)
+function Create-Image{[CmdletBinding()]param($imageName, $localQCOW2Image)
   Write-Verbose "Creating image '${imageName}' using glance ..."
   $createImageProcess = Start-Process -Wait -PassThru -NoNewWindow $glanceBin "image-create --min-disk 20 --min-ram 2048 --disk-format qcow2 --container-format bare --file `"${localQCOW2Image}`" --name `"${imageName}`""
   if ($createImageProcess.ExitCode -ne 0)
