@@ -10,7 +10,7 @@ productkey=""
 use_colors="yes"
 windows_iso="~/Downloads/en_windows_server_2012_r2_with_update_x64_dvd_6052708.iso"
 sqlserver_iso=""
-virtio_iso="/usr/bin/vi"
+virtio_iso="~/Downloads/"
 profiles=""
 sqlserverversion="none"
 assetsdir="assets"
@@ -113,9 +113,6 @@ function get_os()
 function parse_parameters()
 {
 
-	# header for the arguments csv file
-	echo name,value>${vmpath}/floppy/args.csv
-
 	until [ $# -eq 0 ];
 	do
 		case $1 in
@@ -211,8 +208,6 @@ function parse_parameters()
 # based on which OS we run, create a virtual floppy disk
 function create_vfd()
 {
-#FIXME: this needs testing on both oses
-
 	info 2 "Creating floppy"
 
 	# check if $vmpath/floppy exists, if not, create it
@@ -247,13 +242,15 @@ function create_vfd()
 
 		# putting OS* env variables on the floppy
 		info 3 "Copying environment variables to the floppy"
-		echo name,value>${vmpath}/floppy/env.csv
 		echo OS_REGION_NAME,${OS_REGION_NAME} >>${vmpath}/floppy/env.csv
 		echo OS_TENANT_ID,${OS_TENANT_ID} >>${vmpath}/floppy/env.csv
 		echo OS_PASSWORD,${OS_PASSWORD} >>${vmpath}/floppy/env.csv
 		echo OS_USERNAME,${OS_USERNAME} >>${vmpath}/floppy/env.csv
 		echo OS_TENANT_NAME,${OS_TENANT_NAME} >>${vmpath}/floppy/env.csv
 		echo OS_AUTH_URL,${OS_AUTH_URL} >>${vmpath}/floppy/env.csv
+
+		# create a csv file containing the drive letters for the isos
+		map_drive_letters D E F G H >${vmpath}/floppy/driveletters.csv
 
 		# put the product key in autounattend.xml
 		info 3 "Replacing product key in autounattend.xml"
@@ -297,13 +294,15 @@ function create_vfd()
 
 		# putting OS* env variables on the floppy
 		info 3 "Copying environment variables to the floppy"
-		echo name,value>${vmpath}/floppy/env.csv
 		echo OS_REGION_NAME,${OS_REGION_NAME} >>/Volumes/${floppyname}/env.csv
 		echo OS_TENANT_ID,${OS_TENANT_ID} >>/Volumes/${floppyname}/env.csv
 		echo OS_PASSWORD,${OS_PASSWORD} >>/Volumes/${floppyname}/env.csv
 		echo OS_USERNAME,${OS_USERNAME} >>/Volumes/${floppyname}/env.csv
 		echo OS_TENANT_NAME,${OS_TENANT_NAME} >>/Volumes/${floppyname}/env.csv
 		echo OS_AUTH_URL,${OS_AUTH_URL} >>/Volumes/${floppyname}/env.csv
+
+		# create a csv file containing the drive letters for the isos
+		map_drive_letters D E F G H >/Volumes/${floppyname}/driveletters.csv
 
 		# put the product key in autounattend.xml
 		info 3 "Replacing product key in autounattend.xml"
@@ -813,6 +812,32 @@ function run_virtualbox()
 }
 
 
+
+# checks if isos were specified and map them to (ascending) drive letters. The drive letters are specified as space delimited parameters to the function
+function map_drive_letters()
+{
+	# is the windows iso specified ?
+	if [ ! -z "${windows_iso}" ];
+	then
+		echo "$1:,windows"
+		shift
+	fi
+
+	# is the virtio iso specified ?
+	if [ ! -z "${virtio_iso}" ];
+	then
+		echo "$1:,virtio"
+		shift
+	fi
+
+	# is the sqlserver iso specified ?
+	if [ ! -z "${sqlserver_iso}" ];
+	then
+		echo "$1:,sqlserver${sqlserverversion}"
+		shift
+	fi
+
+}
 
 
 parse_parameters $*

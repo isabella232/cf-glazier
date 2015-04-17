@@ -145,7 +145,7 @@
       <RunSynchronous>
         <RunSynchronousCommand wcm:action="add">
           <Order>1</Order>
-          <Path>powershell -NoLogo -NonInteractive -ExecutionPolicy RemoteSigned -File A:\shell.ps1</Path>
+          <Path>powershell -NoLogo -NonInteractive -ExecutionPolicy RemoteSigned -File A:\set-shell.ps1</Path>
           <Description>Run Specialize script</Description>
         </RunSynchronousCommand>
       </RunSynchronous>
