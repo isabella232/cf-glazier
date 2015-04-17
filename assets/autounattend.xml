@@ -97,13 +97,13 @@
       </FirstLogonCommands>
       <UserAccounts>
         <AdministratorPassword>
-          <Value>password1234!</Value>
+          <Value>Changeme!</Value>
           <PlainText>true</PlainText>
         </AdministratorPassword>
       </UserAccounts>
       <AutoLogon>
         <Password>
-          <Value>password1234!</Value>
+          <Value>Changeme!</Value>
           <PlainText>true</PlainText>
         </Password>
         <Enabled>true</Enabled>
