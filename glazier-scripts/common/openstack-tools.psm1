@@ -45,7 +45,7 @@ function Install-VCRedist{[CmdletBinding()]param()
         {
             throw 'Installing VC++ 2010 Redist failed.'
         }
-    
+
         Write-Output "Finished installing VC++ Redistributable"
     }
     finally
@@ -70,7 +70,7 @@ function Install-Python{[CmdletBinding()]param()
     try
     {
         Write-Output "Downloading Python ..."
-        $pythonUrl = Get-Dependency "python"        
+        $pythonUrl = Get-Dependency "python"
         $pythonInstaller = Join-Path $env:temp "Python.msi"
         Download-File $pythonUrl $pythonInstaller
         Write-Output "Installing Python ..."
@@ -79,7 +79,7 @@ function Install-Python{[CmdletBinding()]param()
         {
             throw 'Installing Python failed.'
         }
-    
+
         Write-Output "Finished installing Python"
     }
     finally
@@ -100,7 +100,7 @@ function Install-EasyInstall{[CmdletBinding()]param()
         Write-Output "EasyInstall already installed"
         return
     }
-    
+
     $env:Path = $env:Path + ";${pythonDir};${pythonScriptDir}"
 
     Write-Output "Installing easy_install ..."
@@ -147,7 +147,7 @@ function Install-NovaClient{[CmdletBinding()]param()
         return
     }
     Write-Output "Installing python-novaclient ..."
-    $novaVersion = Get-Dependency "python-novaclient-version"    
+    $novaVersion = Get-Dependency "python-novaclient-version"
     $installProcess = Start-Process -Wait -PassThru -NoNewWindow "${pythonScriptDir}\pip.exe" "install python-novaclient==${novaVersion}"
     if (($installProcess.ExitCode -ne 0) -or !(Check-NovaClient))
     {
@@ -297,7 +297,7 @@ function Update-ImageProperty{[CmdletBinding()]param($imageName, $propertyName, 
 # Create an image based on the generated qcow2
 function Create-Image{[CmdletBinding()]param($imageName, $localQCOW2Image)
   Write-Verbose "Creating image '${imageName}' using glance ..."
-  $createImageProcess = Start-Process -Wait -PassThru -NoNewWindow $glanceBin "image-create --min-disk 20 --min-ram 2048 --disk-format qcow2 --container-format bare --file `"${localQCOW2Image}`" --name `"${imageName}`""
+  $createImageProcess = Start-Process -Wait -PassThru -NoNewWindow $glanceBin "image-create --progress --min-disk 20 --min-ram 2048 --disk-format qcow2 --container-format bare --file `"${localQCOW2Image}`" --name `"${imageName}`""
   if ($createImageProcess.ExitCode -ne 0)
   {
     throw 'Create image failed.'

@@ -24,12 +24,12 @@ if ((Verify-QemuImg) -eq $false)
 # ************************************************************
 # ****************************** STEP2 - CREATE QCOW2
 # ************************************************************
-
+#
 #$name = 'pelerinul'
 #$glazierProfile = '.\test\myprofile'
 #$wimPath="c:\assets\winiso\sources\install.wim"
 #$virtIOPath="c:\assets\virtio"
-
+#
 #New-Image -Name $name -GlazierProfile $glazierProfile -WimPath $wimPath -VirtIOPath $virtIOPath -Verbose
 
 # ************************************************************

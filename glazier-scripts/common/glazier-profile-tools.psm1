@@ -1,3 +1,5 @@
+$currentDir = split-path $SCRIPT:MyInvocation.MyCommand.Path -parent
+Import-Module -DisableNameChecking (Join-Path $currentDir './utils.psm1')
 
 function Get-GlazierProfile{[CmdletBinding()]param($glazierProfilePath)
   if ((Test-Path $glazierProfilePath) -eq $false)
@@ -29,4 +31,18 @@ function Get-GlazierProfile{[CmdletBinding()]param($glazierProfilePath)
   $result | Add-Member -MemberType 'NoteProperty' -Name 'SpecializeToolsCSVFile' -value (Join-Path $glazierProfilePath 'specialize\tools.csv')
 
   return $result
+}
+
+function Download-GlazierProfileResources{[CmdletBinding()]param($glazierProfile, $rootPath)
+  $csv = Import-Csv $glazierProfile.ResourcesCSVFile
+
+  Foreach ($line in $csv)
+  {
+    $url = $line.uri
+    $destination = (Join-Path $rootPath $line.path)
+    $destinationDir = Split-Path $destination
+
+    mkdir $destinationDir
+    Download-File $url $destination
+  }
 }

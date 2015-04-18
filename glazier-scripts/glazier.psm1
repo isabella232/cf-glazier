@@ -35,8 +35,6 @@ function New-Image {
   $isVerbose = [bool]$PSBoundParameters["Verbose"]
   $PSDefaultParameterValues = @{"*:Verbose"=$isVerbose}
 
-  # TODO: check for tooling
-
   $timestamp = Get-Date -f 'yyyyMMddHHmmss'
 
   $vhdMountLetter = $null
@@ -55,6 +53,16 @@ function New-Image {
 
   try
   {
+    if (!(Verify-QemuImg))
+    {
+        throw "qemu-img not found, aborting."
+    }
+
+    if (!(Verify-PythonClientsInstallation))
+    {
+        throw "Python clients not found, aborting."
+    }
+
     Write-Output 'Checking to see if script is running with administrative privileges ...'
     Check-IsAdmin
 
@@ -80,7 +88,8 @@ function New-Image {
     Write-Output 'Adding glazier profile to image ...'
     Add-GlazierProfile $vhdMountLetter $glazierProfile
 
-    # TODO: add glazier resources as well, no need to boot the VM once more the first time we create the image
+    Write-Output 'Adding glazier resources to image ...'
+    Download-GlazierProfileResources $glazierProfile "${vhdMountLetter}:\"
 
     Write-Output 'Adding VirtIO drivers to vhd ...'
     Add-VirtIODriversToImage $vhdMountLetter $VirtIOPath
@@ -152,7 +161,7 @@ function Initialize-Image {
   )
 
   $tempVMName = "${ImageName}-glazier-temp-instance-DO-NOT-USE"
-  $tempImageName = "{ImageName}-glazier-temp-image-DO-NOT-USE"
+  $tempImageName = "${ImageName}-glazier-temp-image-DO-NOT-USE"
 
   # TODO: load openrc info and validate it
 
