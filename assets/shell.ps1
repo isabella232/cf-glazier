@@ -1,7 +1,7 @@
+Import-Module A:\common\glazier-hostutils.psm1
 Import-Module A:\common\openstack-tools.psm1
 
 Verify-PythonClientsInstallation
-Check-OpenRCEnvVars
 #Check-ArgsList
 Validate-WindowsISO
 Check-CACERT

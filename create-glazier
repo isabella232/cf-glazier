@@ -273,7 +273,8 @@ function create_vfd()
 		echo OS_AUTH_URL,${OS_AUTH_URL} >>${vmpath}/floppy/env.csv
 
 		# copy profiles to the floppy
-		copy_profiles_to_floppy ${vmpath}/floppy/
+		[ ! -d ${vmpath}/floppy/profiles ] && run 3 mkdir -p ${vmpath}/floppy/profiles
+		copy_profiles_to_floppy ${vmpath}/floppy/profiles/
 
 		# create a csv file containing the drive letters for the isos
 		info 3 "Mapping ISOs to drive letters"
@@ -336,7 +337,8 @@ function create_vfd()
 		echo OS_AUTH_URL,${OS_AUTH_URL} >>/Volumes/${floppyname}/env.csv
 
 		# copy profiles to the floppy
-		copy_profiles_to_floppy /Volumes/${floppyname}/
+		[ ! -d /Volumes/${floppyname}/profiles ] && run 3 mkdir -p /Volumes/${floppyname}/profiles
+		copy_profiles_to_floppy /Volumes/${floppyname}/profiles/
 
 		# create a csv file containing the drive letters for the isos
 		info 3 "Mapping ISOs to drive letters"
@@ -817,7 +819,7 @@ function run_virtualbox()
 	run 2 VBoxManage createvm --name ${vmname} --register --ostype Windows2012_64 --basefolder ${vmpath}/vbox
 
 	info 3 "Create disk"
-	run 2 VBoxManage createhd --filename ${vmpath}/vbox/${vmname}/${vmname}.vdi --size 25000 --variant standard
+	run 2 VBoxManage createhd --filename ${vmpath}/vbox/${vmname}/${vmname}.vdi --size 100000 --variant standard
 
 	info 3 "Create storage controller (for disk & CDROM)"
 	run 2 VBoxManage storagectl ${vmname} --name "IDE" --add ide --controller PIIX4

@@ -24,16 +24,36 @@ function New-Image {
   param(
     [string]$Name,
     [string]$GlazierProfilePath,
-    [string]$WimPath='e:\sources\install.wim',
-    [string]$VirtIOPath='f:\',
+    [string]$WimPath='',
+    [string]$VirtIOPath='',
     [int]$SizeInBytes=25000,
     [string]$Workspace='c:\workspace',
     [switch]$CleanupWhenDone=$true,
     [string]$ProductKey=''
   )
 
+  # get the $drivesletter for the windows iso
+  $DriveLetter = Import-csv A:\driveletters.csv -Header @("drive","type") | Where-Object {$_.type -eq "windows"}
+
+  $WimPath = Join-Path $($DriveLetter.drive) "sources\install.wim"
+
+  $DriveLetter = Import-csv A:\driveletters.csv -Header @("drive","type") | Where-Object {$_.type -eq "virtio"}
+  $VirtIOPath = $($DriveLetter.drive)
+
+  $ProductKeycsv = Import-csv A:\args.csv -Header @("name","value") | Where-Object {$_.name -eq "product-key"}
+  $ProductKey = $($ProductKeycsv.value)
+
   $isVerbose = [bool]$PSBoundParameters["Verbose"]
   $PSDefaultParameterValues = @{"*:Verbose"=$isVerbose}
+
+  # put the environment variables from env.csv into $envvars
+  $envvars = Import-csv A:\env.csv -Header @("name","value")
+
+  # put them into the environment
+  foreach ($line in $envvars)
+  {
+    set $($line.name) $($line.value)
+  }
 
   $timestamp = Get-Date -f 'yyyyMMddHHmmss'
 
