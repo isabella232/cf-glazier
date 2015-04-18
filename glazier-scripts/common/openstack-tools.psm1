@@ -179,15 +179,6 @@ function Install-GlanceClient{[CmdletBinding()]param()
 }
 
 
-function Check-OpenRCEnvVars{[CmdletBinding()]param()
-  #OS_REGION_NAME=region-b.geo-1
-  #OS_TENANT_ID=10990308817909
-  #OS_PASSWORD=ecastravete
-  #OS_AUTH_URL=https://region-a.geo-1.identity.hpcloudsvc.com:35357/v2.0/
-  #OS_USERNAME=viovanov
-  #OS_TENANT_NAME=Hewlettpackard6525
-}
-
 # Terminate a VM instance
 function Delete-VMInstance{[CmdletBinding()]param($vmName)
   Write-Verbose "Deleting instance '${vmName}' ..."
