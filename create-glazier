@@ -166,7 +166,7 @@ function parse_parameters()
 			shift
 			profiles="$1 $profiles"
 			info 3 "Added profile ${bldylw}$1${txtrst} to profile list"
-			echo profile,$1 >>${tmpdir}/args.csv
+			echo profile,`basename $1` >>${tmpdir}/args.csv
 			shift
 			;;
 		"--with-sql-server")
@@ -204,6 +204,29 @@ function parse_parameters()
 	done
 }
 
+
+
+# copy all profiles to the floppy
+function copy_profiles_to_floppy()
+{
+	# the directory where the floppy is mounted
+	local destination=$1
+
+	# profile name
+	local profile
+
+	# go trough all profiles
+	for profile in $profiles;
+	do
+		# copy the whole directory to the floppy
+		if [ ! -z "$profile" ];
+		then
+			info 3 "Copying profile ${profile} to the floppy image"
+			run 3 cp -R ${profile} ${destination}
+		fi
+	done
+
+}
 
 # based on which OS we run, create a virtual floppy disk
 function create_vfd()
@@ -248,6 +271,9 @@ function create_vfd()
 		echo OS_USERNAME,${OS_USERNAME} >>${vmpath}/floppy/env.csv
 		echo OS_TENANT_NAME,${OS_TENANT_NAME} >>${vmpath}/floppy/env.csv
 		echo OS_AUTH_URL,${OS_AUTH_URL} >>${vmpath}/floppy/env.csv
+
+		# copy profiles to the floppy
+		copy_profiles_to_floppy ${vmpath}/floppy/
 
 		# create a csv file containing the drive letters for the isos
 		info 3 "Mapping ISOs to drive letters"
@@ -308,6 +334,9 @@ function create_vfd()
 		echo OS_USERNAME,${OS_USERNAME} >>/Volumes/${floppyname}/env.csv
 		echo OS_TENANT_NAME,${OS_TENANT_NAME} >>/Volumes/${floppyname}/env.csv
 		echo OS_AUTH_URL,${OS_AUTH_URL} >>/Volumes/${floppyname}/env.csv
+
+		# copy profiles to the floppy
+		copy_profiles_to_floppy /Volumes/${floppyname}/
 
 		# create a csv file containing the drive letters for the isos
 		info 3 "Mapping ISOs to drive letters"
@@ -592,6 +621,7 @@ function validate_windows_image()
 # validates a profile's directory structure
 function validate_profile()
 {
+	# this is the folder containing the profile's files
 	local profilename=$1
 
 	info 3 "Validating profile ${bldylw}${profilename}${txtrst}"
