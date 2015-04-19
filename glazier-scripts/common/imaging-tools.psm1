@@ -20,11 +20,11 @@ function Validate-WindowsWIM{[CmdletBinding()]param($wimPath)
 
   try
   {
-    $wimInfo = Get-WindowsImage -ImagePath $wimPath -Index 1
+    $wimInfo = Get-WindowsImage -ImagePath $wimPath -Index 2
 
-    if ($wimInfo.ImageName -ne 'Windows Server 2012 R2 SERVERSTANDARDCORE')
+    if ($wimInfo.ImageName -ne 'Windows Server 2012 R2 SERVERSTANDARD')
     {
-      throw "Did not find image 'Windows Server 2012 R2 SERVERSTANDARDCORE' at index 0 for wim '${wimPath}'."
+      throw "Did not find image 'Windows Server 2012 R2 SERVERSTANDARD' at index 0 for wim '${wimPath}'."
     }
 
     if ($wimInfo.Languages[0] -ne 'en-us')
@@ -40,13 +40,14 @@ function Validate-WindowsWIM{[CmdletBinding()]param($wimPath)
   }
 }
 
-function CreateAndMount-VHDImage{[CmdletBinding()]param($vhdPath, $sizeInBytes, [ref]$vhdMountLetter)
+function CreateAndMount-VHDImage{[CmdletBinding()]param($vhdPath, $sizeInMB, [ref]$vhdMountLetter)
   $diskpartScriptPath = "${vhdPath}.diskpart"
 
   $diskPartScript = @"
-create vdisk file="${vhdPath}" maximum=${sizeInBytes} type=expandable
+create vdisk file="${vhdPath}" maximum=${sizeInMB} type=expandable
 select vdisk file="${vhdPath}"
 attach vdisk
+convert mbr
 create partition primary
 assign
 format fs="ntfs" label="System" quick
@@ -136,7 +137,7 @@ function Dismount-VHDImage{[CmdletBinding()]param($vhdPath)
 }
 
 function Apply-Image{[CmdletBinding()]param($wimPath, $vhdMountLetter)
-  $dismProcess = Start-Process -Wait -PassThru -NoNewWindow 'dism.exe' "/apply-image /imagefile:${wimPath} /index:1 /ApplyDir:${vhdMountLetter}:\"
+  $dismProcess = Start-Process -Wait -PassThru -NoNewWindow 'dism.exe' "/apply-image /imagefile:${wimPath} /index:2 /ApplyDir:${vhdMountLetter}:\"
 
   if ($dismProcess.ExitCode -ne 0)
   {
@@ -177,7 +178,7 @@ function Add-VirtIODriversToImage{[CmdletBinding()]param($vhdMountLetter, $virti
   }
 }
 
-function Set-DesiredFeatureStateInImage{[CmdletBinding()]param($vhdMountLetter, $featureFile, $wimPath)
+function Set-DesiredFeatureStateInImage{[CmdletBinding()]param($vhdMountLetter, $featureFile, $winIsoMountDir)
   $features = Import-Csv $featureFile
 
   $removedFeatures = $features | Where-Object { $_.desired -eq 'Removed' }
@@ -207,7 +208,8 @@ function Set-DesiredFeatureStateInImage{[CmdletBinding()]param($vhdMountLetter, 
     $featureName = $feature.Feature
 
     Write-Verbose "Enabling feature '${featureName}'"
-    Enable-WindowsOptionalFeature -Path "${vhdMountLetter}:\" -FeatureName ${featureName} -All -LimitAccess -Source $wimPath -Verbose
+    $source = Join-Path $winIsoMountDir 'sources\sxs'
+    Enable-WindowsOptionalFeature -Path "${vhdMountLetter}:\" -FeatureName ${featureName} -All -LimitAccess -Source ${source} -Verbose
   }
 }
 

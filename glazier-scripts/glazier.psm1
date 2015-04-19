@@ -24,36 +24,16 @@ function New-Image {
   param(
     [string]$Name,
     [string]$GlazierProfilePath,
-    [string]$WimPath='',
-    [string]$VirtIOPath='',
-    [int]$SizeInBytes=25000,
+    [string]$WindowsISOMountPath = '',
+    [string]$VirtIOPath='f:\',
+    [int]$SizeInMB=25000,
     [string]$Workspace='c:\workspace',
     [switch]$CleanupWhenDone=$true,
     [string]$ProductKey=''
   )
 
-  # get the $drivesletter for the windows iso
-  $DriveLetter = Import-csv A:\driveletters.csv -Header @("drive","type") | Where-Object {$_.type -eq "windows"}
-
-  $WimPath = Join-Path $($DriveLetter.drive) "sources\install.wim"
-
-  $DriveLetter = Import-csv A:\driveletters.csv -Header @("drive","type") | Where-Object {$_.type -eq "virtio"}
-  $VirtIOPath = $($DriveLetter.drive)
-
-  $ProductKeycsv = Import-csv A:\args.csv -Header @("name","value") | Where-Object {$_.name -eq "product-key"}
-  $ProductKey = $($ProductKeycsv.value)
-
   $isVerbose = [bool]$PSBoundParameters["Verbose"]
   $PSDefaultParameterValues = @{"*:Verbose"=$isVerbose}
-
-  # put the environment variables from env.csv into $envvars
-  $envvars = Import-csv A:\env.csv -Header @("name","value")
-
-  # put them into the environment
-  foreach ($line in $envvars)
-  {
-    set $($line.name) $($line.value)
-  }
 
   $timestamp = Get-Date -f 'yyyyMMddHHmmss'
 
@@ -70,7 +50,9 @@ function New-Image {
   Write-Verbose "Full qcow2 path will be ${qcow2Path}"
   $vhdPath = Join-Path $workDir $vhdFileName
   Write-Verbose "Full vhd path will be ${vhdPath}"
-
+  $wimPath = Join-Path $WindowsISOMountPath 'sources\install.wim'
+  Write-Verbose "Will be using wim from ${vhdPath}"
+  
   try
   {
     if (!(Verify-QemuImg))
@@ -87,7 +69,7 @@ function New-Image {
     Check-IsAdmin
 
     Write-Output 'Validating wim file ...'
-    Validate-WindowsWIM $WIMPath
+    Validate-WindowsWIM $wimPath
 
     Write-Output 'Getting profile information ...'
     $glazierProfile = Get-GlazierProfile $GlazierProfilePath
@@ -97,10 +79,10 @@ function New-Image {
     Clean-Dir $workDir
 
     Write-Output 'Creating and mounting vhd ...'
-    CreateAndMount-VHDImage $vhdPath $SizeInBytes ([ref]$vhdMountLetter)
+    CreateAndMount-VHDImage $vhdPath $SizeInMB ([ref]$vhdMountLetter)
 
     Write-Output 'Applying wim to vhd ...'
-    Apply-Image $WIMPath $vhdMountLetter
+    Apply-Image $wimPath $vhdMountLetter
 
     Write-Output 'Setting up tools for the unattended install ...'
     Add-UnattendScripts $vhdMountLetter
@@ -118,7 +100,7 @@ function New-Image {
     Create-BCDBootConfig $vhdMountLetter
 
     Write-Output 'Configuring Windows features ...'
-    Set-DesiredFeatureStateInImage $vhdMountLetter $glazierProfile.FeaturesCSVFile $wimPath
+    Set-DesiredFeatureStateInImage $vhdMountLetter $glazierProfile.FeaturesCSVFile $WindowsISOMountPath
 
     Write-Output 'Setting up unattend file ...'
     Add-UnattendXml $vhdMountLetter $ProductKey
@@ -128,6 +110,8 @@ function New-Image {
 
     Write-Output 'Converting vhd to qcow2 ...'
     Convert-VHDToQCOW2 $vhdPath $qcow2Path
+    
+    Write-Host "Done. Image ready: ${qcow2Path}" -ForegroundColor Green
   }
   catch
   {
@@ -177,12 +161,22 @@ function Initialize-Image {
     [string]$ImageName,
     [string]$OpenStackKeyName,
     [string]$OpenStackSecurityGroup,
-    [string]$OpenStackNetworkId
+    [string]$OpenStackNetworkId,
+    [string]$OpenStackFlavor
   )
 
-  $tempVMName = "${ImageName}-glazier-temp-instance-DO-NOT-USE"
-  $tempImageName = "${ImageName}-glazier-temp-image-DO-NOT-USE"
-
+  $isVerbose = [bool]$PSBoundParameters["Verbose"]
+  $PSDefaultParameterValues = @{"*:Verbose"=$isVerbose}
+  
+  $timestamp = Get-Date -f 'yyyyMMddHHmmss'
+  
+  $tempVMName = "${ImageName}-glazier-temp-instance-DO-NOT-USE-${timestamp}"
+  Write-Verbose "Temp instance name will be ${tempVMName}"
+  $tempImageName = "${ImageName}-glazier-temp-image-DO-NOT-USE-${timestamp}"
+  Write-Verbose "Temp image name will be ${tempImageName}"
+  $finalImageName = "${ImageName}-${timestamp}"
+  Write-Verbose "Final image name will be ${finalImageName}"
+  
   # TODO: load openrc info and validate it
 
   try
@@ -191,13 +185,13 @@ function Initialize-Image {
     Create-Image $tempImageName $Qcow2ImagePath
 
     Write-Output "Booting temporary instance ..."
-    Boot-VM $tempVMName $tempImageName $OpenStackKeyName $OpenStackSecurityGroup $OpenStackNetworkId
+    Boot-VM $tempVMName $tempImageName $OpenStackKeyName $OpenStackSecurityGroup $OpenStackNetworkId $OpenStackFlavor $null
 
     Write-Output "Waiting for temporary instance to finish installation and shut down ..."
     WaitFor-VMShutdown $tempVMName
 
     Write-Output "Creating final image ..."
-    Create-VMSnapshot $tempVMName $ImageName
+    Create-VMSnapshot $tempVMName $finalImageName
 
     # TODO: set metadata
   }
@@ -281,6 +275,9 @@ function Push-Resources {
     [string]$HttpsProxy=$null
   )
 
+  $isVerbose = [bool]$PSBoundParameters["Verbose"]
+  $PSDefaultParameterValues = @{"*:Verbose"=$isVerbose}
+  
  try{
     $glazierProfile = Get-GlazierProfile $GlazierProfilePath
     Write-Verbose "Generating user-data script"

@@ -42,7 +42,7 @@ function Download-GlazierProfileResources{[CmdletBinding()]param($glazierProfile
     $destination = (Join-Path $rootPath $line.path)
     $destinationDir = Split-Path $destination
 
-    mkdir $destinationDir
+    mkdir $destinationDir -ErrorAction "SilentlyContinue" | Out-Null
     Download-File $url $destination
   }
 }

@@ -69,10 +69,10 @@ try
     }
 
     # Save the compact script and unpack/save utilities
-    # copy sdelete
-    $sdeleteExeOriginal = Join-Path ${resourcesDir} 'sdelete.exe'
-    $sdeleteExe = 'c:\windows\temp\sdelete.exe'
-    Copy-Item -Force $sdeleteExeOriginal $sdeleteExe
+    # unpack sdelete
+    $sdeleteZip = Join-Path ${resourcesDir} 'sdelete.zip'
+    $sdeleteUnpackLocation = Join-Path ${env:WINDIR} 'temp'
+    [System.IO.Compression.ZipFile]::ExtractToDirectory($sdeleteZip, $sdeleteUnpackLocation)
     # unpack ultradefrag
     $ultraDefragZip = Join-Path ${resourcesDir} 'ultradefrag.zip'
     $ultraDefragUnpackLocation = Join-Path ${env:WINDIR} 'temp'

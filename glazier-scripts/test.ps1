@@ -21,16 +21,24 @@ if ((Verify-QemuImg) -eq $false)
   Install-QemuImg -Verbose
 }
 
+if (!(Verify-PythonClientsInstallation))
+{
+  Install-PythonClients -Verbose
+}
+
 # ************************************************************
 # ****************************** STEP2 - CREATE QCOW2
 # ************************************************************
-#
-#$name = 'pelerinul'
-#$glazierProfile = '.\test\myprofile'
-#$wimPath="c:\assets\winiso\sources\install.wim"
-#$virtIOPath="c:\assets\virtio"
-#
-#New-Image -Name $name -GlazierProfile $glazierProfile -WimPath $wimPath -VirtIOPath $virtIOPath -Verbose
+
+
+$name = 'rama'
+$glazierProfile = 'c:\Users\Administrator\code\cf-glazier-profiles\mssql2012'
+$windowsISOMountPath="c:\assets\winiso"
+$virtIOPath="c:\assets\virtio"
+$workspace = "d:\workspace"
+
+New-Image -Name $name -GlazierProfile $glazierProfile -WindowsISOMountPath $WindowsISOMountPath -VirtIOPath $virtIOPath -Verbose -Workspace $workspace
+
 
 # ************************************************************
 # ****************************** STEP3 - CREATE IMAGE
@@ -43,14 +51,17 @@ $env:OS_AUTH_URL = "https://region-a.geo-1.identity.hpcloudsvc.com:35357/v2.0/"
 $env:OS_USERNAME = "viovanov"
 $env:OS_TENANT_NAME = "Hewlettpackard6525"
 
-$imageName = "zugrav"
-$qcow2source = "c:\workspace\pelerinul20150416132919.qcow2"
+$imageName = "rama"
+$qcow2source = "d:\workspace\sticla20150419035849.qcow2"
 $osKeyName = "vlad-key"
-$osSecurityGroup = "vlad-key"
+$osSecurityGroup = "default"
 $osNetworkId = "c62508f5-b5a7-4e7e-b9ea-c9b69ac60bbe"
+$osFlavor = "standard.2xlarge"
 
-Initialize-Image -Qcow2ImagePath $qcow2source -ImageName $imageName -OpenStackKeyName $osKeyName -OpenStackSecurityGroup $osSecurityGroup -OpenStackNetworkId $osNetworkId
 
+Initialize-Image -Verbose -Qcow2ImagePath $qcow2source -ImageName $imageName -OpenStackKeyName $osKeyName -OpenStackSecurityGroup $osSecurityGroup -OpenStackNetworkId $osNetworkId -OpenStackFlavor $osFlavor
+
+ 
 # ************************************************************
 # ****************************** OTHER STUFF
 # ************************************************************

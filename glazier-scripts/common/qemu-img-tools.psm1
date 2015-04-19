@@ -34,7 +34,7 @@ function Install-QemuImg{[CmdletBinding()]param()
 function Convert-VHDToQCOW2{[CmdletBinding()]param($sourceVhd, $destinationQcow2)
   Write-Verbose "Converting vhd '${sourceVhd}' to qcow2 '${destinationQcow2}' ..."
 
-  $convertProcess = Start-Process -Wait -PassThru -NoNewWindow $qemuBin "convert -O qcow2 `"${sourceVhd}`" `"${destinationQcow2}`""
+  $convertProcess = Start-Process -Wait -PassThru -NoNewWindow $qemuBin "convert -o compat=0.10 -O qcow2 `"${sourceVhd}`" `"${destinationQcow2}`""
 
   if ($convertProcess.ExitCode -ne 0)
   {

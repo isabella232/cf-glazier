@@ -213,7 +213,7 @@ function Delete-Image{[CmdletBinding()]param($imageName)
 
 # Create a new image from the VM that installed Windows
 function Create-VMSnapshot{[CmdletBinding()]param($vmName, $imageName)
-  Write-Verbose "Creating image '${baseCompleteImageName}' based on instance ..."
+  Write-Verbose "Creating image '${imageName}' based on instance ..."
 
   $createImageProcess = Start-Process -Wait -PassThru -NoNewWindow $novaBin "image-create --poll `"${vmName}`" `"${imageName}`""
 
@@ -288,7 +288,7 @@ function Update-ImageProperty{[CmdletBinding()]param($imageName, $propertyName, 
 # Create an image based on the generated qcow2
 function Create-Image{[CmdletBinding()]param($imageName, $localQCOW2Image)
   Write-Verbose "Creating image '${imageName}' using glance ..."
-  $createImageProcess = Start-Process -Wait -PassThru -NoNewWindow $glanceBin "image-create --progress --min-disk 20 --min-ram 2048 --disk-format qcow2 --container-format bare --file `"${localQCOW2Image}`" --name `"${imageName}`""
+  $createImageProcess = Start-Process -Wait -PassThru -NoNewWindow $glanceBin "image-create --progress --disk-format qcow2 --container-format bare --file `"${localQCOW2Image}`" --name `"${imageName}`""
   if ($createImageProcess.ExitCode -ne 0)
   {
     throw 'Create image failed.'
