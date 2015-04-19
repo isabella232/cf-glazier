@@ -47,7 +47,7 @@
           <InstallFrom>
             <MetaData wcm:action="add">
               <Key>/IMAGE/NAME</Key>
-              <Value>Windows Server 2012 R2 SERVERSTANDARDCORE</Value>
+              <Value>Windows Server 2012 R2 SERVERSTANDARD</Value>
             </MetaData>
           </InstallFrom>
         </OSImage>
@@ -149,7 +149,7 @@
       <RunSynchronous>
         <RunSynchronousCommand wcm:action="add">
           <Order>1</Order>
-          <Path>powershell -NoLogo -NonInteractive -ExecutionPolicy RemoteSigned -File %SystemDrive%\glazier\profile\specialize.ps1</Path>
+          <Path>powershell -NoLogo -NonInteractive -ExecutionPolicy Bypass -File %SystemDrive%\glazier\profile\specialize\specialize.ps1</Path>
           <Description>Run Glazier Profile specialize script</Description>
         </RunSynchronousCommand>
       </RunSynchronous>

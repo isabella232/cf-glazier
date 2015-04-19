@@ -31,7 +31,7 @@ if (!(Verify-PythonClientsInstallation))
 # ************************************************************
 
 
-$name = 'rama'
+$name = 'surub'
 $glazierProfile = 'c:\Users\Administrator\code\cf-glazier-profiles\mssql2012'
 $windowsISOMountPath="c:\assets\winiso"
 $virtIOPath="c:\assets\virtio"
@@ -51,7 +51,7 @@ $env:OS_AUTH_URL = "https://region-a.geo-1.identity.hpcloudsvc.com:35357/v2.0/"
 $env:OS_USERNAME = "viovanov"
 $env:OS_TENANT_NAME = "Hewlettpackard6525"
 
-$imageName = "rama"
+$imageName = "surub"
 $qcow2source = "d:\workspace\sticla20150419035849.qcow2"
 $osKeyName = "vlad-key"
 $osSecurityGroup = "default"
