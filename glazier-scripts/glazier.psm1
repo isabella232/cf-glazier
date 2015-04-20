@@ -23,7 +23,9 @@ function New-Image {
   #>
   [CmdletBinding()]
   param(
+    [Parameter(Mandatory=$true)]
     [string]$Name,
+    [Parameter(Mandatory=$true)]
     [string]$GlazierProfilePath,
     [string]$WindowsISOMountPath = '',
     [string]$VirtIOPath='',
@@ -186,7 +188,9 @@ function Initialize-Image {
   #>
   [CmdletBinding()]
   param(
+    [Parameter(Mandatory=$true)]
     [string]$Qcow2ImagePath,
+    [Parameter(Mandatory=$true)]
     [string]$ImageName,
     [string]$OpenStackKeyName,
     [string]$OpenStackSecurityGroup,
@@ -206,12 +210,32 @@ function Initialize-Image {
   $finalImageName = "${ImageName}-${timestamp}"
   Write-Verbose "Final image name will be ${finalImageName}"
 
+  if ([string]::IsNullOrWhitespace($OpenStackKeyName))
+  {
+    $OpenStackKeyName = Get-HostArg "os-key-name"
+  }
+
+  if ([string]::IsNullOrWhitespace($OpenStackSecurityGroup))
+  {
+    $OpenStackSecurityGroup = Get-HostArg "os-security-group"
+  }
+
+  if ([string]::IsNullOrWhitespace($OpenStackNetworkId))
+  {
+    $OpenStackNetworkId = Get-HostArg "os-network-id"
+  }
+
+  if ([string]::IsNullOrWhitespace($OpenStackFlavor))
+  {
+    $OpenStackFlavor = Get-HostArg "os-flavor"
+  }
+
   Set-OpenStackVars
 
   try
   {
     Write-Output "Checking OS_* variables ..."
-    Get-VersionList
+    Validate-OSEnvVars
 
     Write-Output "Creating temporary image ..."
     Create-Image $tempImageName $Qcow2ImagePath
@@ -291,20 +315,14 @@ function Push-Resources {
   param(
     [Parameter(Mandatory=$true)]
     [string]$GlazierProfilePath,
-    [Parameter(Mandatory=$true)]
-    [string]$VmName,
-    [Parameter(Mandatory=$true)]
-    [string]$KeyName,
-    [Parameter(Mandatory=$true)]
-    [string]$SecurityGroup,
-    [Parameter(Mandatory=$true)]
-    [string]$NetworkId,
+    [string]$OpenStackKeyName = '',
+    [string]$OpenStackSecurityGroup = '',
+    [string]$OpenStackNetworkId = '',
     [Parameter(Mandatory=$true)]
     [string]$Image,
     [Parameter(Mandatory=$true)]
     [string]$SnapshotImageName,
-    [Parameter(Mandatory=$true)]
-    [string]$Flavor,
+    [string]$OpenStackFlavor = '',
     [string]$HttpProxy=$null,
     [string]$HttpsProxy=$null
   )
@@ -327,7 +345,31 @@ function Push-Resources {
 
   Set-OpenStackVars
 
+  if ([string]::IsNullOrWhitespace($OpenStackKeyName))
+  {
+    $OpenStackKeyName = Get-HostArg "os-key-name"
+  }
+
+  if ([string]::IsNullOrWhitespace($OpenStackSecurityGroup))
+  {
+    $OpenStackSecurityGroup = Get-HostArg "os-security-group"
+  }
+
+  if ([string]::IsNullOrWhitespace($OpenStackNetworkId))
+  {
+    $OpenStackNetworkId = Get-HostArg "os-network-id"
+  }
+
+  if ([string]::IsNullOrWhitespace($OpenStackFlavor))
+  {
+    $OpenStackFlavor = Get-HostArg "os-flavor"
+  }
+
+  $VmName = "${Image}-glazier-temp-instance-DO-NOT-USE"
+
  try{
+   Validate-OSEnvVars
+
     $glazierProfile = Get-GlazierProfile $GlazierProfilePath
     Write-Verbose "Generating user-data script"
     $stringBuilder = New-Object System.Text.StringBuilder
@@ -403,14 +445,16 @@ function Download-File{[CmdletBinding()]param($url, $targetFile, $proxy)
     $stringBuilder.AppendLine("shutdown /s /t 100")
     $stringBuilder.ToString() | Out-File $userData -Encoding ascii
 
-    Boot-VM $VmName $Image $KeyName $SecurityGroup $NetworkId $Flavor $userData
+    Boot-VM $VmName $Image $OpenStackKeyName $OpenStackSecurityGroup $OpenStackNetworkId $OpenStackFlavor $userData
 
     WaitFor-VMShutdown $VmName
 
     Write-Verbose "Creating VM Snapshot ${SnapshotImageName}"
     Create-VMSnapshot $VmName $SnapshotImageName
 
-    # TODO: implement setting metadata for image
+    Write-Output "Updating image metadata ..."
+    Update-ImageProperty $SnapshotImageName 'architecture' 'i686'
+    Update-ImageProperty $SnapshotImageName 'com.hp__1__os_distro' 'com.microsoft.server'
   }
   finally{
     If (Test-Path $userData){
