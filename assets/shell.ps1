@@ -20,7 +20,7 @@ echo @"
   New-Image -Name "my-windows-image" -GlazierProfilePath "myprofile"
 
  To upload and install the image to OpenStack:
-  Initialize-Image -Qcow2ImagePath "c:\workspace\<qcow2 filename>" -ImageName "my-windows-image" -OpenStackKeyName "mykey" -OpenStackSecurityGroup "sec-group" -OpenStackNetworkId "a long guid" -OpenStackFlavor "flavor"
+  Initialize-Image -Qcow2ImagePath "c:\workspace\<qcow2 filename>" -ImageName "my-windows-image"
 
 Welcome to glazier!
 

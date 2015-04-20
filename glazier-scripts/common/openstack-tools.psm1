@@ -300,15 +300,13 @@ function Create-Image{[CmdletBinding()]param($imageName, $localQCOW2Image)
 }
 
 # List API versions, in order to check env vars
-function Get-VersionList{[CmdletBinding()]param()
+function Validate-OSEnvVars{[CmdletBinding()]param()
   Write-Verbose "Checking OS_* env vars ..."
-  $novaBinProcess = Start-Process -Wait -PassThru -NoNewWindow $novaBin "version-list"
-  if ($novaBinProcess.ExitCode -ne 0)
-  {
-    throw 'Failed to get API information. Check your OS_* variables.'
-  }
-  else
-  {
-    Write-Verbose "OS_* vars check successful."
-  }
+
+  if ([string]::IsNullOrWhitespace($env:OS_REGION_NAME)) { throw 'OS_REGION_NAME missing!' }
+  if ([string]::IsNullOrWhitespace($env:OS_TENANT_ID)) { throw 'OS_TENANT_ID missing!' }
+  if ([string]::IsNullOrWhitespace($env:OS_PASSWORD)) { throw 'OS_PASSWORD missing!' }
+  if ([string]::IsNullOrWhitespace($env:OS_AUTH_URL)) { throw 'OS_AUTH_URL missing!' }
+  if ([string]::IsNullOrWhitespace($env:OS_USERNAME)) { throw 'OS_USERNAME missing!' }
+  if ([string]::IsNullOrWhitespace($env:OS_TENANT_NAME)) { throw 'OS_TENANT_NAME missing!' }
 }

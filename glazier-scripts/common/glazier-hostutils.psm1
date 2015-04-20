@@ -1,17 +1,19 @@
 
-function Check-ArgsList{[CmdletBinding()]param()
-  # gets the values from A:\args.csv
-  $argslist = Import-csv A:\args.csv -Header @("name","value")
+function Get-HostArg{[CmdletBinding()]param($argName)
+  $fileExist = Test-Path A:\args.csv
 
-  # echo them out
-  foreach ($line in $argslist)
+  if ($fileExist -eq $True)
   {
-    echo "$($line.name) $($line.value)"
+    $arg = Import-csv A:\args.csv -Header @("name","value") | Where-Object {$_.type -eq $argName}
+    return $arg.value
+  }
+  else
+  {
+    return ''
   }
 }
 
-function Set-OpenStackVars()
-{
+function Set-OpenStackVars{[CmdletBinding()]param()
   # load openrc info
   $envVars = Import-csv A:\env.csv -Header @("name","value")
 
@@ -21,7 +23,7 @@ function Set-OpenStackVars()
     $varName = $line.name
     $varValue = $line.value
     Write-Verbose "Setting var ${varName} ..."
-    New-Item env:\$varName -Value $varValue
+    New-Item env:\$varName -Value $varValue -ErrorAction "SilentlyContinue" | Out-Null
   }
 
   Check-CACERT
