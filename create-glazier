@@ -19,7 +19,7 @@ os_network_id=""
 os_key_name=""
 os_security_group=""
 os_flavor=""
-
+whoami=`id -u`
 
 # shows the users the script's syntax
 function show_help()
@@ -121,6 +121,12 @@ function get_os()
 # parses the command line parameters
 function parse_parameters()
 {
+
+	# empty args.csv in case there was a previous run
+	if [ -e ${tmpdir}/args.csv ];
+	then
+		run 3 rm -f "${tmpdir}/args.csv"
+	fi
 
 	until [ $# -eq 0 ];
 	do
@@ -296,7 +302,7 @@ function create_vfd()
 
 		# mount the floppy, we need  for this
 		info 3 "Mounting the floppy image"
-		run 3 mount -t vfat ${vmpath}/unattend.img ${vmpath}/floppy
+		run 3 sudo mount -t vfat -o loop -o uid=${whoami} ${vmpath}/unattend.img ${vmpath}/floppy
 
 		# recursively copy all assets
 		info 3 "Copying assets to the floppy drive"
@@ -305,7 +311,7 @@ function create_vfd()
 
 		# copying csv files
 		info 3 "Moving argument list csv file to the floppy"
-		run 3 mv -f ${tmpdir}/args.csv ${vmpath}/floppy
+		run 3 sudo mv -f ${tmpdir}/args.csv ${vmpath}/floppy
 
 		# putting OS* env variables on the floppy
 		info 3 "Copying environment variables to the floppy"
@@ -341,11 +347,7 @@ function create_vfd()
 		# sync buffers on disk, sleep for a while to let the system close the copying process gracefully
 		run 3 sync
 		run 3 sleep 3
-		run 3 umount ${vmpath}/floppy
-
-		# removing the 'floppy' directory
-		info 3 "Removing floppy directory"
-		run 3 "rm -rf ${vmpath}/floppy"
+		run 3 sudo umount ${vmpath}/floppy
 		;;
 	"OSX")
 		local floppyname="WINFLOPPY"
@@ -407,12 +409,12 @@ function create_vfd()
 		run 3 sleep 3
 		run 3 umount /Volumes/${floppyname}/
 		run 3 sleep 3
-
-		# removing the 'floppy' directory
-		info 3 "Removing floppy directory"
-		run 3 "rm -rf ${vmpath}/floppy"
 		;;
 	esac
+
+	# removing the 'floppy' directory
+	info 3 "Removing floppy directory"
+	run 3 "rm -rf ${vmpath}/floppy"
 }
 
 
@@ -441,14 +443,6 @@ function validate_net_connectivity()
 function validate_prerequisites()
 {
 	info 2 "Checking prerequisites"
-
-	# check if we are root
-	info 3 "Checking if we're run as root"
-	if [ "`whoami`" != "root" ];
-	then
-		error 1 "This script needs to be run as root. Exiting..."
-		exit 1
-	fi
 
 	# check if virtualbox is installed
 	info 3 "Checking if virtualbox is installed"
@@ -979,6 +973,12 @@ function map_drive_letters()
 
 }
 
+# create the temporary directory if it doesent exist
+if [ ! -d ${tmpdir} ];
+then
+	info 3 "Creating temporary directory"
+	run 3 mkdir -p "${tmpdir}"
+fi
 
 parse_parameters $*
 get_os
@@ -990,3 +990,7 @@ validate_prerequisites
 validate_profiles
 create_vfd
 run_virtualbox
+
+# remove temporary directory
+info 3 "Remove temporary directory"
+run 3 rm -rf "${tmpdir}"
