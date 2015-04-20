@@ -88,14 +88,32 @@ Clone the repository:
     
 Run dry-run to check your parameters:
 
+#### Step 1. Create the glazier Virtual Machine
 ```
 cd cf-glazier
-./create-glazier --windows-iso /PATH/TO/ISO --virtio-iso /PATH/TO/VIRTIOISO --product-key WINDOWS-PRODUCT-KEY --os-network-id OSNETID --os-key-name OSKETNAME --os-security-group OSSECGROUP --os-flavor OSFLAVOR --profile /PATH/TO/PROFILE --dry-run
+./create-glazier --windows-iso <path to windows iso> --virtio-iso <path to VirtIO iso> --product-key <Windows Product Key> --os-network-id <os network ID> --os-key-name <os region name> --os-security-group <os security group> --os-flavor <os flavor name> --profile <path to profile dir> --dry-run
 ```
 
-Create the image.
+Create the glazier Virtual Machine.
 ```
-./create-glazier --windows-iso /PATH/TO/ISO --virtio-iso /PATH/TO/VIRTIOISO --product-key WINDOWS-PRODUCT-KEY --os-network-id OSNETID --os-key-name OSKEYNAME --os-security-group OSSECGROUP --os-flavor OSFLAVOR --profile /PATH/TO/PROFILE
+./create-glazier --windows-iso <path to windows iso> --virtio-iso <path to VirtIO iso> --product-key <Windows Product Key> --os-network-id <os network ID> --os-key-name <os region name> --os-security-group <os security group> --os-flavor <os flavor name> --profile <path to profile dir>
 ```
 
+#### Step 2. Create the Image
+On the glazier VM run the following command:
 
+    New-Image -name "myimage" -GlazierProfilePath "PROFILE"
+
+#### Step 3. Initialize image
+On the glazier VM run the following command:
+
+    Initialize-Image -Qcow2ImagePath "c:\workspace\<qcow filename>" -ImageName "my-windows-image"
+
+The <qcow filename> is printed after **Step 2** is done.
+
+#### Step 4. Push Resources
+This step is only needed when the user wants to update the binaries of the profile.
+
+On the glazier VM run the following command:
+   	
+    Push-Resources -GlazierProfilePath "PROFILE" -SnapshotImageName "my-windows-image"
