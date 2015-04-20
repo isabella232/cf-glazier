@@ -6,6 +6,7 @@ $pythonDir = Join-Path $env:SYSTEMDRIVE 'Python27'
 $pythonScriptDir = Join-Path $pythonDir 'Scripts'
 $glanceBin = Join-Path $pythonScriptDir 'glance.exe'
 $novaBin = Join-Path $pythonScriptDir 'nova.exe'
+$swiftBin = Join-Path $pythonScriptDir 'swift.exe'
 
 
 function Get-InsecureFlag{[CmdletBinding()]param()
@@ -31,6 +32,7 @@ function Install-PythonClients{[CmdletBinding()]param()
     Install-Pip
     Install-NovaClient
     Install-GlanceClient
+    Install-SwiftClient
     Write-Output "Done"
 }
 
@@ -189,6 +191,56 @@ function Install-GlanceClient{[CmdletBinding()]param()
     Write-Output "Finished installing glance client"
 }
 
+function Check-SwiftClient{[CmdletBinding()]param()
+    return (Test-Path $swiftBin)
+}
+
+function Install-SwiftClient{[CmdletBinding()]param()
+    if(Check-GlanceClient)
+    {
+        Write-Output "SwiftClient already installed"
+        return
+    }
+    Write-Output "Installing python-swiftclient ..."
+    $glanceVersion = Get-Dependency "python-swiftclient-version"
+    $installProcess = Start-Process -Wait -PassThru -NoNewWindow "${pythonScriptDir}\pip.exe" "install python-swiftclient==${glanceVersion}"
+    if (($installProcess.ExitCode -ne 0) -or !(Check-GlanceClient))
+    {
+        throw 'Installing swift client failed.'
+    }
+
+    Write-Output "Finished installing swift client"
+}
+
+function Upload-Swift{[CmdletBinding()]param($container, $localPath, $remotePath)
+  Write-Verbose "Uploading '${localPath}' to '${remotePath}' in container '${container}'"
+
+  $uploadProcess = Start-Process -Wait -PassThru -NoNewWindow $swiftBin "upload --segment-size 1073741824  --object-name `"${remotePath}`" `"${container}`" `"${localPath}`""
+
+  if ($uploadProcess.ExitCode -ne 0)
+  {
+    throw 'Uploading to swift failed.'
+  }
+  else
+  {
+    Write-Verbose "[OK] Upload successful."
+  }
+}
+
+function Download-Swift{[CmdletBinding()]param($container, $remotePath, $localPath)
+  Write-Verbose "Downloading '${remotePath}' to '${localPath}' from container '${container}'"
+
+  $downloadProcess = Start-Process -Wait -PassThru -NoNewWindow $swiftBin "download --output `"${localPath}`" `"${container}`" `"${remotePath}`""
+
+  if ($downloadProcess.ExitCode -ne 0)
+  {
+    throw 'Downloading from swift failed.'
+  }
+  else
+  {
+    Write-Verbose "[OK] Download successful."
+  }
+}
 
 # Terminate a VM instance
 function Delete-VMInstance{[CmdletBinding()]param($vmName)
