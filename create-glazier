@@ -4,17 +4,23 @@
 # defaults. They can be overwritten by command line parameters
 verbosity=3  # 1=least verbose, 3=most verbose
 dry_run="no"
-vmname="testvm"
+vmname="glaziervm"
 vmpath="~/.glazier"
 productkey=""
 use_colors="yes"
-windows_iso="~/Downloads/en_windows_server_2012_r2_with_update_x64_dvd_6052708.iso"
+#windows_iso="~/Downloads/en_windows_server_2012_r2_with_update_x64_dvd_6052708.iso"
+windows_iso=""
 sqlserver_iso=""
-virtio_iso="~/Downloads/virtio.iso"
+virtio_iso=""
 profiles=""
 sqlserverversion="none"
 assetsdir="assets"
 tmpdir="/tmp/glazier"
+os_network_id=""
+os_key_name=""
+os_security_group=""
+os_flavor=""
+
 
 # shows the users the script's syntax
 function show_help()
@@ -32,6 +38,10 @@ Available options:
 						  be saved. The default is ~/.glazier
 --with-sql-server {none|2012|2014}		- if this is set, you also have to set --sql-server-iso
 --product-key KEY				- Windows product key
+--os-network-id NETWORK_ID			- OpenStack network id
+--os-key-name KEY_NAME				- OpenStack key name
+--os-security-group SECURITY_GROUP		- OpenStack security group
+--os-flavor FLAVOR				- OpenStack flavor
 --dry-run					- run but don't make any changes
 --verbosity verbosity_level			- verbosity level is an interger between 1-3, with 1
 						  being the least verbose and 3 being the most verbose
@@ -152,6 +162,34 @@ function parse_parameters()
 			info 3 "Got ${bldylw}virtio-iso${txtrst} = ${virtio_iso}"
 			echo virtio-iso,${virtio_iso} >>${tmpdir}/args.csv
 			;;
+		"--os-network-id")
+			shift
+			os_network_id=$1
+			shift
+			info 3 "Got ${bldylw}os-network-id${txtrst} = ${os_network_id}"
+			echo os-network-id,${os_network_id} >>${tmpdir}/args.csv
+			;;
+		"--os-key-name")
+			shift
+			os_key_name=$1
+			shift
+			info 3 "Got ${bldylw}os-key-name${txtrst} = ${os_key_name}"
+			echo os-key-name,${os_key_name} >>${tmpdir}/args.csv
+			;;
+		"--os-security-group")
+			shift
+			os_security_group=$1
+			shift
+			info 3 "Got ${bldylw}os-security-group${txtrst} = ${os_security_group}"
+			echo os-security-group,${os_security_group} >>${tmpdir}/args.csv
+			;;
+		"--os-flavor")
+			shift
+			os_flavor=$1
+			shift
+			info 3 "Got ${bldylw}os-flavor${txtrst} = ${os_flavor}"
+			echo os-flavor,${os_flavor} >>${tmpdir}/args.csv
+			;;
 		"--help"|"-h")
 			show_help
 			shift
@@ -202,6 +240,12 @@ function parse_parameters()
 			;;
 		esac
 	done
+
+	if [ -e "${tmpdir}/args.csv" ];
+	then
+		cat ${tmpdir}/args.csv | sort | uniq > ${tmpdir}/args.csv.sorted
+		mv -f ${tmpdir}/args.csv.sorted ${tmpdir}/args.csv
+	fi
 }
 
 
@@ -447,7 +491,14 @@ function validate_prerequisites()
 	esac
 
 
-	# check if windows_iso exists
+	# check if --windows-iso parameter was specified
+	if [ -z "${windows_iso}" ];
+	then
+		error 1 "Missing --windows-iso parameter"
+		exit 1
+	fi
+
+	# check if windows_iso file exists
 	info 3 "Checking if Windows iso exists"
 	if [ ! -e "${windows_iso}" ];
 	then
@@ -481,9 +532,9 @@ function validate_prerequisites()
 		fi
 	fi
 
-	# check if virtio_iso exists
+	# check if virtio_iso file exists, if variable is not empty
 	info 3 "Checking if virtio iso exists"
-	if [ ! -e "${virtio_iso}" ];
+	if [ ! -z "${virtio_iso}" -a ! -e "${virtio_iso}" ];
 	then
 		error 1 "Cannot find virtio image in : ${virtio_iso}"
 		exit 1
@@ -528,6 +579,41 @@ function validate_prerequisites()
 	then
 		info 3 "Creating temporary directory"
 		run 3 mkdir "${tmpdir}"
+	fi
+
+	# check if $os_network_id is set
+	if [ -z "$os_network_id" ];
+	then
+		error 1 "Missing --os-network-id parameter"
+		exit 1
+	fi
+
+	# check if $os_key_name is set
+	if [ -z "$os_key_name" ];
+	then
+		error 1 "Missing --os-key-name parameter"
+		exit 1
+	fi
+
+	# check if $os_security_group is set
+	if [ -z "$os_security_group" ];
+	then
+		error 1 "Missing --os-security-group parameter"
+		exit 1
+	fi
+
+	# check if $os_flavor is set
+	if [ -z "$os_flavor" ];
+	then
+		error 1 "Missing --os-flavor parameter"
+		exit 1
+	fi
+
+	# make sure at least one profile is specified
+	if [ -z "$profiles" ];
+	then
+		error 1 "You need to specify at least one --profile"
+		exit 1
 	fi
 
 	info 3 "Done checking prerequisites"
