@@ -8,7 +8,6 @@ vmname="glaziervm"
 vmpath="~/.glazier"
 productkey=""
 use_colors="yes"
-#windows_iso="~/Downloads/en_windows_server_2012_r2_with_update_x64_dvd_6052708.iso"
 windows_iso=""
 sqlserver_iso=""
 virtio_iso=""
@@ -533,9 +532,16 @@ function validate_prerequisites()
 		fi
 	fi
 
-	# check if virtio_iso file exists, if variable is not empty
+	# check if --virtio-iso parameter was specified
+	if [ -z "${virtio_iso}" ];
+	then
+		error 1 "Missing --virtio-iso parameter"
+		exit 1
+	fi
+
+	# check if virtio_iso file exists
 	info 3 "Checking if virtio iso exists"
-	if [ ! -z "${virtio_iso}" -a ! -e "${virtio_iso}" ];
+	if [ ! -e "${virtio_iso}" ];
 	then
 		error 1 "Cannot find virtio image in : ${virtio_iso}"
 		exit 1
