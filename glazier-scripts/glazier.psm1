@@ -5,6 +5,7 @@ Import-Module -DisableNameChecking (Join-Path $currentDir './common/glazier-prof
 Import-Module -DisableNameChecking (Join-Path $currentDir './common/openstack-tools.psm1')
 Import-Module -DisableNameChecking (Join-Path $currentDir './common/qemu-img-tools.psm1')
 Import-Module -DisableNameChecking (Join-Path $currentDir './common/imaging-tools.psm1')
+Import-Module -DisableNameChecking (Join-Path $currentDir './common/glazier-hostutils.psm1')
 
 function New-Image {
   <#
@@ -25,7 +26,7 @@ function New-Image {
     [string]$Name,
     [string]$GlazierProfilePath,
     [string]$WindowsISOMountPath = '',
-    [string]$VirtIOPath='f:\',
+    [string]$VirtIOPath='',
     [int]$SizeInMB=25000,
     [string]$Workspace='c:\workspace',
     [switch]$CleanupWhenDone=$true,
@@ -34,6 +35,34 @@ function New-Image {
 
   $isVerbose = [bool]$PSBoundParameters["Verbose"]
   $PSDefaultParameterValues = @{"*:Verbose"=$isVerbose}
+
+  if ([string]::IsNullOrWhitespace($WindowsISOMountPath))
+  {
+    $WindowsISOMountPath = Get-WindowsISOMountPath
+  }
+
+  if ([string]::IsNullOrWhitespace($VirtIOPath))
+  {
+    $VirtIOPath = Get-VirtIOPath
+  }
+
+  if ([string]::IsNullOrWhitespace($ProductKey))
+  {
+    $ProductKey = Get-ProductKey
+  }
+
+  if ([string]::IsNullOrWhitespace($GlazierProfilePath))
+  {
+    Write-Error "GlazierProfilePath is empty. Please provide a valid path."
+  }
+  else
+  {
+    if ((Test-Path $GlazierProfilePath) -eq $false)
+    {
+      Write-Verbose "${GlazierProfilePath} not found on the local drive, trying the builder image."
+      $GlazierProfilePath = Join-Path 'A:\profiles' $GlazierProfilePath
+    }
+  }
 
   $timestamp = Get-Date -f 'yyyyMMddHHmmss'
 
@@ -52,7 +81,7 @@ function New-Image {
   Write-Verbose "Full vhd path will be ${vhdPath}"
   $wimPath = Join-Path $WindowsISOMountPath 'sources\install.wim'
   Write-Verbose "Will be using wim from ${vhdPath}"
-  
+
   try
   {
     if (!(Verify-QemuImg))
@@ -110,7 +139,7 @@ function New-Image {
 
     Write-Output 'Converting vhd to qcow2 ...'
     Convert-VHDToQCOW2 $vhdPath $qcow2Path
-    
+
     Write-Host "Done. Image ready: ${qcow2Path}" -ForegroundColor Green
   }
   catch
@@ -167,20 +196,23 @@ function Initialize-Image {
 
   $isVerbose = [bool]$PSBoundParameters["Verbose"]
   $PSDefaultParameterValues = @{"*:Verbose"=$isVerbose}
-  
+
   $timestamp = Get-Date -f 'yyyyMMddHHmmss'
-  
+
   $tempVMName = "${ImageName}-glazier-temp-instance-DO-NOT-USE-${timestamp}"
   Write-Verbose "Temp instance name will be ${tempVMName}"
   $tempImageName = "${ImageName}-glazier-temp-image-DO-NOT-USE-${timestamp}"
   Write-Verbose "Temp image name will be ${tempImageName}"
   $finalImageName = "${ImageName}-${timestamp}"
   Write-Verbose "Final image name will be ${finalImageName}"
-  
-  # TODO: load openrc info and validate it
+
+  Set-OpenStackVars
 
   try
   {
+    Write-Output "Checking OS_* variables ..."
+    Get-VersionList
+
     Write-Output "Creating temporary image ..."
     Create-Image $tempImageName $Qcow2ImagePath
 
@@ -193,7 +225,9 @@ function Initialize-Image {
     Write-Output "Creating final image ..."
     Create-VMSnapshot $tempVMName $finalImageName
 
-    # TODO: set metadata
+    Write-Output "Updating image metadata ..."
+    Update-ImageProperty $finalImageName 'architecture' 'i686'
+    Update-ImageProperty $finalImageName 'com.hp__1__os_distro' 'com.microsoft.server'
   }
   finally
   {
@@ -277,7 +311,22 @@ function Push-Resources {
 
   $isVerbose = [bool]$PSBoundParameters["Verbose"]
   $PSDefaultParameterValues = @{"*:Verbose"=$isVerbose}
-  
+
+  if ([string]::IsNullOrWhitespace($GlazierProfilePath))
+  {
+    Write-Error "GlazierProfilePath is empty. Please provide a valid path."
+  }
+  else
+  {
+    if ((Test-Path $GlazierProfilePath) -eq $false)
+    {
+      Write-Verbose "${GlazierProfilePath} not found on the local drive, trying the builder image."
+      $GlazierProfilePath = Join-Path 'A:\profiles' $GlazierProfilePath
+    }
+  }
+
+  Set-OpenStackVars
+
  try{
     $glazierProfile = Get-GlazierProfile $GlazierProfilePath
     Write-Verbose "Generating user-data script"

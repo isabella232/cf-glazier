@@ -48,7 +48,7 @@ function Download-File{[CmdletBinding()]param($url, $targetFile)
   $totalLength = [System.Math]::Floor($response.get_ContentLength()/1024)
   $responseStream = $response.GetResponseStream()
   $targetStream = New-Object -TypeName System.IO.FileStream -ArgumentList $targetFile, Create
-  $buffer = new-object byte[] 10KB
+  $buffer = new-object byte[] 50KB
   $count = $responseStream.Read($buffer,0,$buffer.length)
   $downloadedBytes = $count
   $sw = [System.Diagnostics.Stopwatch]::StartNew()
@@ -70,7 +70,7 @@ function Download-File{[CmdletBinding()]param($url, $targetFile)
     }
   }
 
-  Write-Progress -activity "Finished downloading file '$($url.split('/') | Select -Last 1)'" -status "Done"
+  Write-Progress -activity "Downloading file '$($url.split('/') | Select -Last 1)'" -status "Done"
   $targetStream.Flush()
   $targetStream.Close()
   $targetStream.Dispose()

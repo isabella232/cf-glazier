@@ -222,7 +222,8 @@ function copy_profiles_to_floppy()
 		if [ ! -z "$profile" ];
 		then
 			info 3 "Copying profile ${profile} to the floppy image"
-			run 3 cp -R ${profile} ${destination}
+			profile_dir=`echo "${profile}" | sed 's#/*$##'`
+			run 3 cp -R ${profile_dir} ${destination}
 		fi
 	done
 
@@ -249,7 +250,7 @@ function create_vfd()
 		# make a vfat filesystem
 		info 3 "Formatting the floppy image with vfat filesystem"
 		run 3 mkfs.vfat ${vmpath}/unattend.img
-		
+
 		# mount the floppy, we need  for this
 		info 3 "Mounting the floppy image"
 		run 3 mount -t vfat ${vmpath}/unattend.img ${vmpath}/floppy
@@ -362,7 +363,7 @@ function create_vfd()
 		run 3 sync
 		run 3 sleep 3
 		run 3 umount /Volumes/${floppyname}/
-		run 3 sleep 3		
+		run 3 sleep 3
 
 		# removing the 'floppy' directory
 		info 3 "Removing floppy directory"
@@ -615,7 +616,6 @@ function validate_windows_image()
 		error 1 "The Windows iso provided doesn't seem to be an iso volume. Exiting..."
 		exit 1
 	fi
-
 }
 
 
@@ -761,7 +761,7 @@ function run()
 	local run_verbosity=$1
 	shift
 
-	# 
+	#
 	info 1 "Running: \"$*\""
 
 	# is the run verbosity greater than the global one ?
@@ -898,4 +898,3 @@ validate_prerequisites
 validate_profiles
 create_vfd
 run_virtualbox
-

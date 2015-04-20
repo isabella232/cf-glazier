@@ -298,3 +298,17 @@ function Create-Image{[CmdletBinding()]param($imageName, $localQCOW2Image)
     Write-Verbose "Create image was successful."
   }
 }
+
+# List API versions, in order to check env vars
+function Get-VersionList{[CmdletBinding()]param()
+  Write-Verbose "Checking OS_* env vars ..."
+  $novaBinProcess = Start-Process -Wait -PassThru -NoNewWindow $novaBin "version-list"
+  if ($novaBinProcess.ExitCode -ne 0)
+  {
+    throw 'Failed to get API information. Check your OS_* variables.'
+  }
+  else
+  {
+    Write-Verbose "OS_* vars check successful."
+  }
+}
