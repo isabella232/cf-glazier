@@ -2,7 +2,7 @@ $currentDir = split-path $SCRIPT:MyInvocation.MyCommand.Path -parent
 
 Import-Module -DisableNameChecking (Join-Path $currentDir './utils.psm1')
 
-$pythonDir = Join-Path $env:SYSTEMDRIVE 'Python34'
+$pythonDir = Join-Path $env:SYSTEMDRIVE 'Python27'
 $pythonScriptDir = Join-Path $pythonDir 'Scripts'
 $glanceBin = Join-Path $pythonScriptDir 'glance.exe'
 $novaBin = Join-Path $pythonScriptDir 'nova.exe'
@@ -24,13 +24,13 @@ function Install-PythonClients{[CmdletBinding()]param()
 }
 
 function Check-VCRedist{[CmdletBinding()]param()
-    return ((Get-ItemProperty HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\* | where DisplayName -like "*Visual C++ 2010*x64*") -ne $null)
+    return ((Get-ItemProperty HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\* | where DisplayName -like "*Visual C++ 2008*x64*") -ne $null)
 }
 
 function Install-VCRedist{[CmdletBinding()]param()
     if(Check-VCRedist)
     {
-        Write-Output "VC++ 2010 Redistributable already installed"
+        Write-Output "VC++ 2008 Redistributable already installed"
         return
     }
 
@@ -43,10 +43,10 @@ function Install-VCRedist{[CmdletBinding()]param()
         $installProcess = Start-Process -Wait -PassThru -NoNewWindow $vcInstaller "/q /norestart"
         if (($installProcess.ExitCode -ne 0) -or !(Check-VCRedist))
         {
-            throw 'Installing VC++ 2010 Redist failed.'
+            throw 'Installing VC++ 2008 Redist failed.'
         }
 
-        Write-Output "Finished installing VC++ Redistributable"
+        Write-Output "Finished installing VC++ 2008 Redistributable"
     }
     finally
     {
