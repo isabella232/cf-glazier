@@ -59,14 +59,12 @@ $osNetworkId = "e8871d2b-da09-4ece-8785-530da230c6b8"
 $osFlavor = "m1.xlarge"
 
 
-#Initialize-Image -Verbose -Qcow2ImagePath $qcow2source -ImageName $imageName -OpenStackKeyName $osKeyName -OpenStackSecurityGroup $osSecurityGroup -OpenStackNetworkId $osNetworkId -OpenStackFlavor $osFlavor
+Initialize-Image -Verbose -Qcow2ImagePath $qcow2source -ImageName $imageName -OpenStackKeyName $osKeyName -OpenStackSecurityGroup $osSecurityGroup -OpenStackNetworkId $osNetworkId -OpenStackFlavor $osFlavor -Cleanup:$false
 
 
 # ************************************************************
 # ****************************** OTHER STUFF
 # ************************************************************
-
-Create-ImageFromSwift "test" "glazier-images-windea-test1-glazier-temp-image-DO-NOT-USE-20150422184512" "windea-test1-glazier-temp-image-DO-NOT-USE-20150422184512"
 
 #Get-SwiftToGlanceUrl "glazier-images" "win kajs hdkjasd 8923 #dea" -Verbose
 #Validate-SwiftExistence -Verbose

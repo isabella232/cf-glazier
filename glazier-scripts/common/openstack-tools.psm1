@@ -494,14 +494,15 @@ function Create-ImageFromSwift{[CmdletBinding()]param($imageName, $container, $o
   }
 
   Write-Verbose "Creating image '${imageName}' using glance from swift source '${swiftObjectUrl}' ..."
-  $createImageProcess = Start-Process -Wait -PassThru -NoNewWindow $glanceBin "image-create --progress --disk-format qcow2 --container-format bare --copy-from `"${swiftObjectUrl}`" --name `"${imageName}`""
+  $createImageProcess = Start-Process -Wait -PassThru -NoNewWindow $glanceBin "image-create --progress --disk-format qcow2 --container-format bare --location `"${swiftObjectUrl}`" --name `"${imageName}`""
   if ($createImageProcess.ExitCode -ne 0)
   {
     throw 'Create image from swift failed.'
   }
   else
   {
-    Write-Verbose "Create image from swift was successful."
+    Write-Verbose "Create image from swift was successful. Sleeping 1 minute ..."
+    Start-Sleep -s 60
   }
 }
 

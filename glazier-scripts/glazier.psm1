@@ -235,8 +235,14 @@ function Initialize-Image {
     [string]$OpenStackSecurityGroup,
     [string]$OpenStackNetworkId,
     [string]$OpenStackFlavor,
-    [string]$OpenStackSwiftContainer = 'glazier-images'
+    [string]$OpenStackSwiftContainer = 'glazier-images',
+    [switch]$Cleanup = $true
   )
+  
+  if ($Cleanup -eq $false)
+  {
+    Write-Warning "Cleanup flag is set to false. Temporary images and instances will not be deleted."
+  }
 
   $isVerbose = [bool]$PSBoundParameters["Verbose"]
   $PSDefaultParameterValues = @{"*:Verbose"=$isVerbose}
@@ -311,15 +317,17 @@ function Initialize-Image {
 
         Write-Output "Creating temporary image ..."
         Create-ImageFromSwift $tempImageName $OpenStackSwiftContainer $tempImageName
-        return
       }
       finally
       {
         try
         {
-          Write-Output "Deleting temp image from swift ..."
-          Delete-SwiftContainer "${OpenStackSwiftContainer}_segments"
-          Delete-SwiftContainer $OpenStackSwiftContainer
+          if ($Cleanup)
+          {
+            Write-Output "Deleting temp image from swift ..."
+            Delete-SwiftContainer "${OpenStackSwiftContainer}_segments"
+            Delete-SwiftContainer $OpenStackSwiftContainer
+          }
         }
         catch
         {
@@ -352,8 +360,11 @@ function Initialize-Image {
   {
     try
     {
-      Write-Output "Deleting temp instance ..."
-      Delete-VMInstance $tempVMName
+      if ($Cleanup)
+      {
+        Write-Output "Deleting temp instance ..."
+        Delete-VMInstance $tempVMName
+      }
     }
     catch
     {
@@ -363,8 +374,11 @@ function Initialize-Image {
 
     try
     {
-      Write-Output "Deleting temp image ..."
-      Delete-Image $tempImageName
+      if ($Cleanup)
+      {
+        Write-Output "Deleting temp image ..."
+        Delete-Image $tempImageName
+      }
     }
     catch
     {
