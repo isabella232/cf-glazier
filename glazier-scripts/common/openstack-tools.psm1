@@ -227,10 +227,13 @@ function Create-SwiftContainer{[CmdletBinding()]param($container)
   }
 }
 
-function Upload-Swift{[CmdletBinding()]param($container, $localPath, $remotePath)
+function Upload-Swift{[CmdletBinding()]param($localPath, $container, $remotePath)
   Write-Verbose "Uploading '${localPath}' to '${remotePath}' in container '${container}'"
 
-  $uploadProcess = Start-Process -Wait -PassThru -NoNewWindow $swiftBin "upload --segment-size 1073741824  --object-name `"${remotePath}`" `"${container}`" `"${localPath}`""
+  # Use a 100MB segment size
+  $segmentSize = 1024 * 1024 * 100
+
+  $uploadProcess = Start-Process -Wait -PassThru -NoNewWindow $swiftBin "upload --segment-size ${segmentSize} --segment-threads 1 --object-name `"${remotePath}`" `"${container}`" `"${localPath}`""
 
   if ($uploadProcess.ExitCode -ne 0)
   {
@@ -242,6 +245,21 @@ function Upload-Swift{[CmdletBinding()]param($container, $localPath, $remotePath
   }
 }
 
+function Delete-SwiftContainer{[CmdletBinding()]param($container)
+  Write-Verbose "Deleting container '${container}'"
+
+  $deleteProcess = Start-Process -Wait -PassThru -NoNewWindow $swiftBin "delete `"${container}`""
+
+  if ($deleteProcess.ExitCode -ne 0)
+  {
+    throw 'Deleting from swift failed.'
+  }
+  else
+  {
+    Write-Verbose "[OK] Delete successful."
+  }
+}
+
 function Get-SwiftToGlanceUrl{[CmdletBinding()]param($container, $object)
   $url = [UriBuilder]"${env:OS_AUTH_URL}"
   $url.Scheme = "swift"
@@ -249,7 +267,7 @@ function Get-SwiftToGlanceUrl{[CmdletBinding()]param($container, $object)
   $url.UserName = "${env:OS_TENANT_NAME}%3A${env:OS_USERNAME}"
   $url.Password = $env:OS_PASSWORD
 
-  return $url.Uri.ToString()
+  return $url.Uri.AbsoluteUri.ToString()
 }
 
 function Download-Swift{[CmdletBinding()]param($container, $remotePath, $localPath)
@@ -270,6 +288,17 @@ function Download-Swift{[CmdletBinding()]param($container, $remotePath, $localPa
 function Validate-SwiftExistence{[CmdletBinding()]param()
   try
   {
+    # Do not use swift storage on HP Public Cloud
+    if ($env:OS_AUTH_URL -like '*.hpcloudsvc.com:*')
+    {
+      return $false
+    }
+
+    if ([string]::IsNullOrWhitespace($env:OS_CACERT) -eq $false)
+    {
+      Import-509Certificate $env:OS_CACERT 'LocalMachine' 'Root'
+    }
+
     $url = "${env:OS_AUTH_URL}/tokens"
     $body = "{`"auth`":{`"passwordCredentials`":{`"username`": `"${env:OS_USERNAME}`",`"password`": `"${env:OS_PASSWORD}`"},`"tenantId`": `"${env:OS_TENANT_ID}`"}}"
     $headers = @{"Content-Type"="application/json"}
@@ -292,8 +321,8 @@ function Validate-SwiftExistence{[CmdletBinding()]param()
       return $false
     }
 
-    Write-Verbose "Found the following swift url: $($endpoint.Uri)"
-    return $endpoint.publicUrl
+    Write-Verbose "Found the following swift url: $($endpoint.publicUrl)"
+    return $true
   }
   catch
   {
@@ -353,21 +382,50 @@ function Create-VMSnapshot{[CmdletBinding()]param($vmName, $imageName)
 
 # Wait for the instance to be shut down
 function WaitFor-VMShutdown{[CmdletBinding()]param($vmName)
-  $instanceOff = $false
-  while ($instanceOff -eq $false)
+
+  $isVerbose = [bool]$PSBoundParameters["Verbose"]
+  $instanceOffCount = 0
+
+  while ($instanceOffCount -lt 3)
   {
-    Write-Output "Sleeping for 1 minute ..."
+    [Console]::Out.Write(".")
+
     Start-Sleep -s 60
     $vmStatus = (& $novaBin $(Get-InsecureFlag) show "${vmName}" --minimal | sls -pattern "^\| status\s+\|\s+(?<state>\w+)" | select -expand Matches | foreach {$_.groups["state"].value})
 
     if (${vmStatus} -eq 'ERROR')
     {
+      if ($isVerbose)
+      {
+        [Console]::Out.Write("E")
+      }
+
+      Write-Output "Error"
       throw 'VM is in an error state.'
     }
 
-    Write-Output "Instance status is '${vmStatus}'"
-    $instanceOff = ($vmStatus -eq 'SHUTOFF')
+    if ([string]::IsNullOrWhitespace(${vmStatus}) -eq $true)
+    {
+      Write-Output "Error"
+      throw 'VM is in an unknown state.'
+    }
+
+    if ($isVerbose)
+    {
+      [Console]::Out.Write("$($vmStatus[0])")
+    }
+
+    if ($vmStatus -eq 'SHUTOFF')
+    {
+      $instanceOff = $instanceOff + 1
+    }
+    else
+    {
+      $instanceOff = 0
+    }
   }
+
+  Write-Output "Done"
 }
 
 # Boot a VM using the created image (it will install Windows unattended)
@@ -424,8 +482,18 @@ function Create-Image{[CmdletBinding()]param($imageName, $localQCOW2Image)
 }
 
 # Create an image based on a swift url
-function Create-ImageFromSwift{[CmdletBinding()]param($imageName, $swiftObjectUrl)
-  Write-Verbose "Creating image '${imageName}' using glance from a swift source ..."
+function Create-ImageFromSwift{[CmdletBinding()]param($imageName, $container, $object)
+  try
+  {
+    $swiftObjectUrl = Get-SwiftToGlanceUrl $container $object
+  }
+  catch
+  {
+    $errorMessage = $_.Exception.Message
+    throw "Could not generate a swift object url for glance: ${errorMessage}"
+  }
+
+  Write-Verbose "Creating image '${imageName}' using glance from swift source '${swiftObjectUrl}' ..."
   $createImageProcess = Start-Process -Wait -PassThru -NoNewWindow $glanceBin "image-create --progress --disk-format qcow2 --container-format bare --copy-from `"${swiftObjectUrl}`" --name `"${imageName}`""
   if ($createImageProcess.ExitCode -ne 0)
   {

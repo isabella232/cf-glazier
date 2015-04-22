@@ -42,7 +42,7 @@ if (!(Verify-PythonClientsInstallation))
 # ************************************************************
 # ****************************** STEP3 - CREATE IMAGE
 # ************************************************************
-#
+
 $env:OS_REGION_NAME = "regionOne"
 $env:OS_TENANT_ID = "fa6960fa0a3e4ffc86504c02953b1987"
 $env:OS_PASSWORD = "password"
@@ -51,14 +51,14 @@ $env:OS_USERNAME = "vlad"
 $env:OS_TENANT_NAME = "vlad"
 $env:OS_CACERT = "c:\assets\os_cacert.pem"
 
-#$imageName = "surub"
-#$qcow2source = "d:\workspace\sticla20150419035849.qcow2"
-#$osKeyName = "vlad-key"
-#$osSecurityGroup = "default"
-#$osNetworkId = "c62508f5-b5a7-4e7e-b9ea-c9b69ac60bbe"
-#$osFlavor = "standard.2xlarge"
-#
-#
+$imageName = "windea-test1"
+$qcow2source = "c:\workspace\windea-test120150421232025.qcow2"
+$osKeyName = "vlad-key"
+$osSecurityGroup = "default"
+$osNetworkId = "e8871d2b-da09-4ece-8785-530da230c6b8"
+$osFlavor = "m1.xlarge"
+
+
 #Initialize-Image -Verbose -Qcow2ImagePath $qcow2source -ImageName $imageName -OpenStackKeyName $osKeyName -OpenStackSecurityGroup $osSecurityGroup -OpenStackNetworkId $osNetworkId -OpenStackFlavor $osFlavor
 
 
@@ -66,8 +66,10 @@ $env:OS_CACERT = "c:\assets\os_cacert.pem"
 # ****************************** OTHER STUFF
 # ************************************************************
 
-Get-SwiftToGlanceUrl "glazier-images" "windea"
-Validate-SwiftExistence -Verbose
+Create-ImageFromSwift "test" "glazier-images-windea-test1-glazier-temp-image-DO-NOT-USE-20150422184512" "windea-test1-glazier-temp-image-DO-NOT-USE-20150422184512"
+
+#Get-SwiftToGlanceUrl "glazier-images" "win kajs hdkjasd 8923 #dea" -Verbose
+#Validate-SwiftExistence -Verbose
 
 
 # Stable VirtIO

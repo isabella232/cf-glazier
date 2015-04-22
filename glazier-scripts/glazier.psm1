@@ -249,6 +249,8 @@ function Initialize-Image {
   Write-Verbose "Temp image name will be ${tempImageName}"
   $finalImageName = "${ImageName}-${timestamp}"
   Write-Verbose "Final image name will be ${finalImageName}"
+  $OpenStackSwiftContainer = "${OpenStackSwiftContainer}-${tempImageName}"
+  Write-Verbose "Will be using ${OpenStackSwiftContainer} as a swift container name"
 
   if ([string]::IsNullOrWhitespace($OpenStackKeyName))
   {
@@ -297,16 +299,41 @@ function Initialize-Image {
     Write-Output "Checking OS_* variables ..."
     Validate-OSEnvVars
 
-    Write-Output "Creating a container on swift ..."
-    Create-SwiftContainer $OpenStackSwiftContainer
+    if (Validate-SwiftExistence)
+    {
+      try
+      {
+        Write-Output "Creating a container on swift ..."
+        Create-SwiftContainer $OpenStackSwiftContainer
 
-    Write-Output "Uploading image to swift ..."
-    Upload-Swift $OpenStackSwiftContainer $tempImageName $tempImageName
+        Write-Output "Detected an object store, uploading image to swift ..."
+        Upload-Swift $Qcow2ImagePath $OpenStackSwiftContainer $tempImageName
 
-    return
-
-    Write-Output "Creating temporary image ..."
-    Create-Image $tempImageName $Qcow2ImagePath
+        Write-Output "Creating temporary image ..."
+        Create-ImageFromSwift $tempImageName $OpenStackSwiftContainer $tempImageName
+        return
+      }
+      finally
+      {
+        try
+        {
+          Write-Output "Deleting temp image from swift ..."
+          Delete-SwiftContainer "${OpenStackSwiftContainer}_segments"
+          Delete-SwiftContainer $OpenStackSwiftContainer
+        }
+        catch
+        {
+          $errorMessage = $_.Exception.Message
+          Write-Warning "Failed to delete temp image '${tempImageName}' from swift (it probably doesn't exist): ${errorMessage}"
+        }
+      }
+    }
+    else
+    {
+      Write-Warning "Did not detect an object store, will try to upload image directly to glance ..."
+      Write-Output "Creating temporary image ..."
+      Create-Image $tempImageName $Qcow2ImagePath
+    }
 
     Write-Output "Booting temporary instance ..."
     Boot-VM $tempVMName $tempImageName $OpenStackKeyName $OpenStackSecurityGroup $OpenStackNetworkId $OpenStackFlavor $null

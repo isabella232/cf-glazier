@@ -15,7 +15,14 @@ function Get-HostArg{[CmdletBinding()]param($argName)
 
 function Set-OpenStackVars{[CmdletBinding()]param()
   # load openrc info
-  $envVars = Import-csv A:\env.csv -Header @("name","value")
+  if ($fileExist -eq $True)
+  {
+    $envVars = Import-csv A:\env.csv -Header @("name","value")
+  }
+  else
+  {
+    return
+  }
 
   # put them into the environment
   foreach ($line in $envVars)
