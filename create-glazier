@@ -316,10 +316,10 @@ function create_vfd()
 		# putting OS* env variables on the floppy
 		info 3 "Copying environment variables to the floppy"
 		echo OS_REGION_NAME,${OS_REGION_NAME} >>${vmpath}/floppy/env.csv
-		echo OS_TENANT_ID,${OS_TENANT_ID} >>${vmpath}/floppy/env.csv
 		echo OS_PASSWORD,${OS_PASSWORD} >>${vmpath}/floppy/env.csv
 		echo OS_USERNAME,${OS_USERNAME} >>${vmpath}/floppy/env.csv
 		echo OS_TENANT_NAME,${OS_TENANT_NAME} >>${vmpath}/floppy/env.csv
+		echo OS_TENANT_ID,${OS_TENANT_ID} >>/Volumes/${floppyname}/env.csv
 		echo OS_AUTH_URL,${OS_AUTH_URL} >>${vmpath}/floppy/env.csv
 
 		# copy profiles to the floppy
@@ -376,10 +376,10 @@ function create_vfd()
 		# putting OS* env variables on the floppy
 		info 3 "Copying environment variables to the floppy"
 		echo OS_REGION_NAME,${OS_REGION_NAME} >>/Volumes/${floppyname}/env.csv
-		echo OS_TENANT_ID,${OS_TENANT_ID} >>/Volumes/${floppyname}/env.csv
 		echo OS_PASSWORD,${OS_PASSWORD} >>/Volumes/${floppyname}/env.csv
 		echo OS_USERNAME,${OS_USERNAME} >>/Volumes/${floppyname}/env.csv
 		echo OS_TENANT_NAME,${OS_TENANT_NAME} >>/Volumes/${floppyname}/env.csv
+		echo OS_TENANT_ID,${OS_TENANT_ID} >>/Volumes/${floppyname}/env.csv
 		echo OS_AUTH_URL,${OS_AUTH_URL} >>/Volumes/${floppyname}/env.csv
 
 		# copy profiles to the floppy
@@ -637,6 +637,15 @@ function validate_environment_vars()
 	info 3 "${bldylw}OS_TENANT_NAME${txtrst}=$OS_TENANT_NAME"
 
 
+	info 3 "Checking OS_TENANT_ID"
+	if [ -z ${OS_TENANT_ID+x} ];
+	then
+		error 1 "The environment variable ${bldylw}OS_TENANT_ID${txtrst} is not set. Exiting..."
+		exit 1
+	fi
+	info 3 "${bldylw}OS_TENANT_ID${txtrst}=$OS_TENANT_ID"
+
+
 	info 3 "Checking OS_USERNAME"
 	if [ -z ${OS_USERNAME+x} ];
 	then
@@ -663,6 +672,13 @@ function validate_environment_vars()
 	fi
 	info 3 "${bldylw}OS_REGION_NAME${txtrst}=$OS_REGION_NAME"
 
+	info 3 "Checking OS_AUTH_URL"
+	if [ -z ${OS_AUTH_URL+x} ];
+	then
+		error 1 "The environment variable ${bldylw}OS_AUTH_URL${txtrst} is not set. Exiting..."
+		exit 1
+	fi
+	info 3 "${bldylw}OS_REGION_NAME${txtrst}=$OS_REGION_NAME"
 
 	info 3 "Done checking environment variables"
 }
