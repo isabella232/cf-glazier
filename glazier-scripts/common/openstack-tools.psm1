@@ -21,7 +21,7 @@ function Get-InsecureFlag{[CmdletBinding()]param()
 }
 
 function Verify-PythonClientsInstallation{[CmdletBinding()]param()
-    return ((Check-NovaClient) -and (Check-GlanceClient))
+  return ((Check-NovaClient) -and (Check-GlanceClient) -and (Check-SwiftClient))
 }
 
 function Install-PythonClients{[CmdletBinding()]param()
@@ -196,7 +196,7 @@ function Check-SwiftClient{[CmdletBinding()]param()
 }
 
 function Install-SwiftClient{[CmdletBinding()]param()
-    if(Check-GlanceClient)
+    if(Check-SwiftClient)
     {
         Write-Output "SwiftClient already installed"
         return
@@ -210,6 +210,21 @@ function Install-SwiftClient{[CmdletBinding()]param()
     }
 
     Write-Output "Finished installing swift client"
+}
+
+function Create-SwiftContainer{[CmdletBinding()]param($container)
+  Write-Verbose "Creating container '${container}' in swift ..."
+
+  $createProcess = Start-Process -Wait -PassThru -NoNewWindow $swiftBin "post ${container}"
+
+  if ($createProcess.ExitCode -ne 0)
+  {
+    throw 'Creating swift container failed.'
+  }
+  else
+  {
+    Write-Verbose "[OK] Swift container created successfully."
+  }
 }
 
 function Upload-Swift{[CmdletBinding()]param($container, $localPath, $remotePath)
@@ -227,6 +242,16 @@ function Upload-Swift{[CmdletBinding()]param($container, $localPath, $remotePath
   }
 }
 
+function Get-SwiftToGlanceUrl{[CmdletBinding()]param($container, $object)
+  $url = [UriBuilder]"${env:OS_AUTH_URL}"
+  $url.Scheme = "swift"
+  $url.Path = Join-Path $url.Path "${container}/${object}"
+  $url.UserName = "${env:OS_TENANT_NAME}%3A${env:OS_USERNAME}"
+  $url.Password = $env:OS_PASSWORD
+
+  return $url.Uri.ToString()
+}
+
 function Download-Swift{[CmdletBinding()]param($container, $remotePath, $localPath)
   Write-Verbose "Downloading '${remotePath}' to '${localPath}' from container '${container}'"
 
@@ -239,6 +264,42 @@ function Download-Swift{[CmdletBinding()]param($container, $remotePath, $localPa
   else
   {
     Write-Verbose "[OK] Download successful."
+  }
+}
+
+function Validate-SwiftExistence{[CmdletBinding()]param()
+  try
+  {
+    $url = "${env:OS_AUTH_URL}/tokens"
+    $body = "{`"auth`":{`"passwordCredentials`":{`"username`": `"${env:OS_USERNAME}`",`"password`": `"${env:OS_PASSWORD}`"},`"tenantId`": `"${env:OS_TENANT_ID}`"}}"
+    $headers = @{"Content-Type"="application/json"}
+
+    # Make the call
+    $response = Invoke-WebRequest -UseBasicParsing -Uri $url -Method Post -Body $body -Headers $headers
+
+    $jsonResponse = ConvertFrom-Json $response.Content
+    $objectStore = ($jsonResponse.access.serviceCatalog | ? { $_.type -eq 'object-store'})
+
+    if ($objectStore -eq $null)
+    {
+        return $false
+    }
+
+    $endpoint = ($objectStore.endpoints | ? {$_.region -eq $env:OS_REGION_NAME})
+
+    if ($endpoint -eq $null)
+    {
+      return $false
+    }
+
+    Write-Verbose "Found the following swift url: $($endpoint.Uri)"
+    return $endpoint.publicUrl
+  }
+  catch
+  {
+    $errorMessage = $_.Exception.Message
+    Write-Verbose "Error while trying to find a swift store: ${errorMessage}"
+    return $false
   }
 }
 
@@ -362,7 +423,21 @@ function Create-Image{[CmdletBinding()]param($imageName, $localQCOW2Image)
   }
 }
 
-# List API versions, in order to check env vars
+# Create an image based on a swift url
+function Create-ImageFromSwift{[CmdletBinding()]param($imageName, $swiftObjectUrl)
+  Write-Verbose "Creating image '${imageName}' using glance from a swift source ..."
+  $createImageProcess = Start-Process -Wait -PassThru -NoNewWindow $glanceBin "image-create --progress --disk-format qcow2 --container-format bare --copy-from `"${swiftObjectUrl}`" --name `"${imageName}`""
+  if ($createImageProcess.ExitCode -ne 0)
+  {
+    throw 'Create image from swift failed.'
+  }
+  else
+  {
+    Write-Verbose "Create image from swift was successful."
+  }
+}
+
+# check OS_* specific env vars
 function Validate-OSEnvVars{[CmdletBinding()]param()
   Write-Verbose "Checking OS_* env vars ..."
 

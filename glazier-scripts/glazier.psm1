@@ -234,7 +234,8 @@ function Initialize-Image {
     [string]$OpenStackKeyName,
     [string]$OpenStackSecurityGroup,
     [string]$OpenStackNetworkId,
-    [string]$OpenStackFlavor
+    [string]$OpenStackFlavor,
+    [string]$OpenStackSwiftContainer = 'glazier-images'
   )
 
   $isVerbose = [bool]$PSBoundParameters["Verbose"]
@@ -295,6 +296,14 @@ function Initialize-Image {
   {
     Write-Output "Checking OS_* variables ..."
     Validate-OSEnvVars
+
+    Write-Output "Creating a container on swift ..."
+    Create-SwiftContainer $OpenStackSwiftContainer
+
+    Write-Output "Uploading image to swift ..."
+    Upload-Swift $OpenStackSwiftContainer $tempImageName $tempImageName
+
+    return
 
     Write-Output "Creating temporary image ..."
     Create-Image $tempImageName $Qcow2ImagePath
