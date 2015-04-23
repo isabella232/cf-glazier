@@ -20,6 +20,11 @@ os_key_name=""
 os_security_group=""
 os_flavor=""
 whoami=`id -u`
+insecure="false"
+#fullpath=`readlink -f $0`
+glazierpath=`dirname $0`
+glazier_version=`cat ${glazierpath}/.glazier_version`
+
 
 # shows the users the script's syntax
 function show_help()
@@ -28,24 +33,24 @@ function show_help()
 Syntax: `basename $0` <options>
 
 Available options:
---windows-iso /path/to/windows_iso_kit		- specifies the location of the Windows iso image
---sql-server-iso /path/to/sqlserver_iso_kit	- specifies the location of the SQLServer iso image
---virtio-iso /path/to/virtio_iso_kit		- specifies the path to the virtio iso image
+--windows-iso /path/to/windows_iso_kit		- (required) specifies the location of the Windows iso image
+--virtio-iso /path/to/virtio_iso_kit		- (required) specifies the path to the virtio iso image
 --profile PATH					- (optional) path to a glazier profile directory.
 						  Can be used multiple times
 --vm-path PATH					- (optional) path to a directory where VBox files will
-						  be saved. The default is ~/.glazier
---with-sql-server {none|2012|2014}		- if this is set, you also have to set --sql-server-iso
---product-key KEY				- Windows product key
---os-network-id NETWORK_ID			- OpenStack network id
---os-key-name KEY_NAME				- OpenStack key name
---os-security-group SECURITY_GROUP		- OpenStack security group
---os-flavor FLAVOR				- OpenStack flavor
---dry-run					- run but don't make any changes
---verbosity verbosity_level			- verbosity level is an interger between 1-3, with 1
+						  be saved. The default is ~/.glazier. Make sure to have at least 10GB free
+--product-key KEY				- (required) Windows product key
+--os-network-id NETWORK_ID			- (required) OpenStack network id
+--os-key-name KEY_NAME				- (required) OpenStack key name
+--os-security-group SECURITY_GROUP		- (required) OpenStack security group
+--os-flavor FLAVOR				- (required) OpenStack flavor
+--insecure					- (optional) create a Windows image for a HDP that doesen't have an https certificate
+--dry-run					- (optional) run but don't make any changes
+--verbosity verbosity_level			- (optional) verbosity level is an interger between 1-3, with 1
 						  being the least verbose and 3 being the most verbose
---use-colors {yes|no}				- should the script display colors or not
---help						- shows this message
+--use-colors {yes|no}				- (optional) should the script display colors or not
+--version					- (optional) show the version
+--help						- (optional) shows this message
 EOF
 }
 
@@ -154,6 +159,7 @@ function parse_parameters()
 			echo windows-iso,${windows_iso} >>${tmpdir}/args.csv
 			;;
 		"--sql-server-iso")
+			# TODO
 			shift
 			sqlserver_iso=$1
 			shift
@@ -213,6 +219,7 @@ function parse_parameters()
 			shift
 			;;
 		"--with-sql-server")
+			# TODO
 			shift
 			sqlserverversion=$1
 			shift
@@ -238,6 +245,15 @@ function parse_parameters()
 			shift
 			info 3 "Got product key"
 			echo product-key,${productkey} >>${tmpdir}/args.csv
+			;;
+		"--version")
+			echo ${glazier_version}
+			exit 0
+			;;
+		"--insecure")
+			shift
+			info 3 "Got insecure flag"
+			insecure="true"
 			;;
 		*)
 			error 1 "Unknown parameter $1 ... Exiting"
@@ -306,11 +322,12 @@ function create_vfd()
 
 		# recursively copy all assets
 		info 3 "Copying assets to the floppy drive"
-		run 3 cp -R ${assetsdir}/* ${vmpath}/floppy
-		run 3 cp -R glazier-scripts/* ${vmpath}/floppy
+		run 3 cp -R ${glazierpath}/${assetsdir}/* ${vmpath}/floppy
+		run 3 cp -R ${glazierpath}/glazier-scripts/* ${vmpath}/floppy
 
 		# copying csv files
 		info 3 "Moving argument list csv file to the floppy"
+		echo "version,${glazier_version}" >>${tmpdir}/args.csv
 		run 3 sudo mv -f ${tmpdir}/args.csv ${vmpath}/floppy
 
 		# putting OS* env variables on the floppy
@@ -319,8 +336,9 @@ function create_vfd()
 		echo OS_PASSWORD,${OS_PASSWORD} >>${vmpath}/floppy/env.csv
 		echo OS_USERNAME,${OS_USERNAME} >>${vmpath}/floppy/env.csv
 		echo OS_TENANT_NAME,${OS_TENANT_NAME} >>${vmpath}/floppy/env.csv
-		echo OS_TENANT_ID,${OS_TENANT_ID} >>/Volumes/${floppyname}/env.csv
+		echo OS_TENANT_ID,${OS_TENANT_ID} >>${vmpath}/floppy/env.csv
 		echo OS_AUTH_URL,${OS_AUTH_URL} >>${vmpath}/floppy/env.csv
+		[ "${insecure}" == "true" ] && echo "OS_INSECURE,true" >>${vmpath}/floppy/env.csv
 
 		# copy profiles to the floppy
 		[ ! -d ${vmpath}/floppy/profiles ] && run 3 mkdir -p ${vmpath}/floppy/profiles
@@ -339,7 +357,7 @@ function create_vfd()
 
 		# put the product key in autounattend.xml
 		info 3 "Replacing product key in autounattend.xml"
-		cat ${vmpath}/floppy/autounattend.xml | sed s/PRODUCT-KEY-DO-NOT-CHANGE-THIS-LINE/${productkey}/g >${tmpdir}/autounattend.xml
+		cat ${glazierpath}/${assetsdir}/autounattend.xml | sed s/PRODUCT-KEY-DO-NOT-CHANGE-THIS-LINE/${productkey}/g >${tmpdir}/autounattend.xml
 		run 2 mv -f ${tmpdir}/autounattend.xml ${vmpath}/floppy/autounattend.xml
 
 		# unmount the image
@@ -366,11 +384,12 @@ function create_vfd()
 
 		# recursively copy all assets
 		info 3 "Copying assets to the floppy drive"
-		run 3 cp -R ${assetsdir}/* /Volumes/${floppyname}/
-		run 3 cp -R glazier-scripts/* /Volumes/${floppyname}/
+		run 3 cp -R ${glazierpath}/${assetsdir}/* /Volumes/${floppyname}/
+		run 3 cp -R ${glazierpath}/glazier-scripts/* /Volumes/${floppyname}/
 
 		# copying csv files
 		info 3 "Moving argument list csv file to the floppy"
+		echo "version,${glazier_version}" >>${tmpdir}/args.csv
 		run 3 mv -f ${tmpdir}/args.csv /Volumes/${floppyname}/
 
 		# putting OS* env variables on the floppy
@@ -381,6 +400,7 @@ function create_vfd()
 		echo OS_TENANT_NAME,${OS_TENANT_NAME} >>/Volumes/${floppyname}/env.csv
 		echo OS_TENANT_ID,${OS_TENANT_ID} >>/Volumes/${floppyname}/env.csv
 		echo OS_AUTH_URL,${OS_AUTH_URL} >>/Volumes/${floppyname}/env.csv
+		[ "${insecure}" == "true" ] && echo "OS_INSECURE,true" >>/Volumes/${floppyname}/env.csv
 
 		# copy profiles to the floppy
 		[ ! -d /Volumes/${floppyname}/profiles ] && run 3 mkdir -p /Volumes/${floppyname}/profiles
@@ -399,7 +419,7 @@ function create_vfd()
 
 		# put the product key in autounattend.xml
 		info 3 "Replacing product key in autounattend.xml"
-		cat ${assetsdir}/autounattend.xml | sed s/PRODUCT-KEY-DO-NOT-CHANGE-THIS-LINE/${productkey}/g >${tmpdir}/autounattend.xml
+		cat ${glazierpath}/${assetsdir}/autounattend.xml | sed s/PRODUCT-KEY-DO-NOT-CHANGE-THIS-LINE/${productkey}/g >${tmpdir}/autounattend.xml
 		run 2 mv -f ${tmpdir}/autounattend.xml /Volumes/${floppyname}/autounattend.xml
 
 		# unmount the image
@@ -617,6 +637,9 @@ function validate_prerequisites()
 		exit 1
 	fi
 
+	# validate virtualbox version
+	validate_virtualbox
+
 	info 3 "Done checking prerequisites"
 }
 
@@ -777,6 +800,31 @@ function validate_profiles()
 		# validate each profile if its name is not empty
 		[ ! -z "$profile" ] && validate_profile $profile
 	done
+}
+
+
+
+# validates the virtualbox version
+function validate_virtualbox()
+{
+	local vbversion=`VBoxManage --version`
+	local answer=""
+
+	info 3 "Validating virtualbox version"
+	if [ "`echo ${vbversion}|cut -f 1-2 -d \.`" != "4.3" ];
+	then
+		error 1 "You have an unsupported version of virtualbox installed ("${vbversion}"). Supported versions are 4.3.x. Do you want to continue (type 'yes' to continue) ?"
+		echo -n "Your answer:"
+		read answer
+		
+		if [ "$answer" == "yes" ];
+		then
+			info 1 "Going on with an unsupported version of virtualbox. Things might not work as expected."
+		else
+			info 1 "Exiting..."
+			exit 0
+		fi
+	fi
 }
 
 
@@ -989,6 +1037,8 @@ function map_drive_letters()
 
 }
 
+
+
 # create the temporary directory if it doesent exist
 if [ ! -d ${tmpdir} ];
 then
@@ -1010,3 +1060,4 @@ run_virtualbox
 # remove temporary directory
 info 3 "Remove temporary directory"
 run 3 rm -rf "${tmpdir}"
+

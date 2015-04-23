@@ -8,6 +8,17 @@ $glanceBin = Join-Path $pythonScriptDir 'glance.exe'
 $novaBin = Join-Path $pythonScriptDir 'nova.exe'
 
 
+function Get-InsecureFlag{[CmdletBinding()]param()
+    If ( $env:OS_INSECURE -match "true" )
+    {
+        return '--insecure'
+    }
+    Else
+    {
+        return ''
+    }
+}
+
 function Verify-PythonClientsInstallation{[CmdletBinding()]param()
     return ((Check-NovaClient) -and (Check-GlanceClient))
 }
@@ -183,7 +194,7 @@ function Install-GlanceClient{[CmdletBinding()]param()
 function Delete-VMInstance{[CmdletBinding()]param($vmName)
   Write-Verbose "Deleting instance '${vmName}' ..."
 
-  $deleteVMProcess = Start-Process -Wait -PassThru -NoNewWindow $novaBin "delete `"${vmName}`""
+  $deleteVMProcess = Start-Process -Wait -PassThru -NoNewWindow $novaBin "$(Get-InsecureFlag) delete `"${vmName}`""
 
   if ($deleteVMProcess.ExitCode -ne 0)
   {
@@ -199,7 +210,7 @@ function Delete-VMInstance{[CmdletBinding()]param($vmName)
 function Delete-Image{[CmdletBinding()]param($imageName)
   Write-Verbose "Deleting image '${imageName}' ..."
 
-  $deleteImageProcess = Start-Process -Wait -PassThru -NoNewWindow $glanceBin "image-delete `"${imageName}`""
+  $deleteImageProcess = Start-Process -Wait -PassThru -NoNewWindow $glanceBin "$(Get-InsecureFlag) image-delete `"${imageName}`""
 
   if ($deleteImageProcess.ExitCode -ne 0)
   {
@@ -215,7 +226,7 @@ function Delete-Image{[CmdletBinding()]param($imageName)
 function Create-VMSnapshot{[CmdletBinding()]param($vmName, $imageName)
   Write-Verbose "Creating image '${imageName}' based on instance ..."
 
-  $createImageProcess = Start-Process -Wait -PassThru -NoNewWindow $novaBin "image-create --poll `"${vmName}`" `"${imageName}`""
+  $createImageProcess = Start-Process -Wait -PassThru -NoNewWindow $novaBin "$(Get-InsecureFlag) image-create --poll `"${vmName}`" `"${imageName}`""
 
   if ($createImageProcess.ExitCode -ne 0)
   {
@@ -234,7 +245,7 @@ function WaitFor-VMShutdown{[CmdletBinding()]param($vmName)
   {
     Write-Output "Sleeping for 1 minute ..."
     Start-Sleep -s 60
-    $vmStatus = (& $novaBin show "${vmName}" --minimal | sls -pattern "^\| status\s+\|\s+(?<state>\w+)" | select -expand Matches | foreach {$_.groups["state"].value})
+    $vmStatus = (& $novaBin $(Get-InsecureFlag) show "${vmName}" --minimal | sls -pattern "^\| status\s+\|\s+(?<state>\w+)" | select -expand Matches | foreach {$_.groups["state"].value})
 
     if (${vmStatus} -eq 'ERROR')
     {
@@ -259,7 +270,7 @@ function Boot-VM{[CmdletBinding()]param($vmName, $imageName, $keyName, $security
     $userDataStr = ""
   }
 
-  $bootVMProcess = Start-Process -Wait -PassThru -NoNewWindow $novaBin "boot --flavor `"${flavor}`" --image `"${imageName}`" --key-name `"${keyName}`" --security-groups `"${securityGroup}`" ${userDataStr} --nic net-id=${networkId} `"${vmName}`""
+  $bootVMProcess = Start-Process -Wait -PassThru -NoNewWindow $novaBin "$(Get-InsecureFlag) boot --flavor `"${flavor}`" --image `"${imageName}`" --key-name `"${keyName}`" --security-groups `"${securityGroup}`" ${userDataStr} --nic net-id=${networkId} `"${vmName}`""
 
   if ($bootVMProcess.ExitCode -ne 0)
   {
@@ -274,7 +285,7 @@ function Boot-VM{[CmdletBinding()]param($vmName, $imageName, $keyName, $security
 # Update an image with the specified property
 function Update-ImageProperty{[CmdletBinding()]param($imageName, $propertyName, $propertyValue)
   Write-Verbose "Updating property '${propertyName}' for image '${imageName}' using glance ..."
-  $updateImageProcess = Start-Process -Wait -PassThru -NoNewWindow $glanceBin "image-update --property ${propertyName}=${propertyValue} `"${imageName}`""
+  $updateImageProcess = Start-Process -Wait -PassThru -NoNewWindow $glanceBin "$(Get-InsecureFlag) image-update --property ${propertyName}=${propertyValue} `"${imageName}`""
   if ($updateImageProcess.ExitCode -ne 0)
   {
     throw 'Update image property failed.'
@@ -288,7 +299,7 @@ function Update-ImageProperty{[CmdletBinding()]param($imageName, $propertyName, 
 # Create an image based on the generated qcow2
 function Create-Image{[CmdletBinding()]param($imageName, $localQCOW2Image)
   Write-Verbose "Creating image '${imageName}' using glance ..."
-  $createImageProcess = Start-Process -Wait -PassThru -NoNewWindow $glanceBin "image-create --progress --disk-format qcow2 --container-format bare --file `"${localQCOW2Image}`" --name `"${imageName}`""
+  $createImageProcess = Start-Process -Wait -PassThru -NoNewWindow $glanceBin "$(Get-InsecureFlag) image-create --progress --disk-format qcow2 --container-format bare --file `"${localQCOW2Image}`" --name `"${imageName}`""
   if ($createImageProcess.ExitCode -ne 0)
   {
     throw 'Create image failed.'
@@ -303,10 +314,22 @@ function Create-Image{[CmdletBinding()]param($imageName, $localQCOW2Image)
 function Validate-OSEnvVars{[CmdletBinding()]param()
   Write-Verbose "Checking OS_* env vars ..."
 
+
   if ([string]::IsNullOrWhitespace($env:OS_REGION_NAME)) { throw 'OS_REGION_NAME missing!' }
   if ([string]::IsNullOrWhitespace($env:OS_TENANT_ID)) { throw 'OS_TENANT_ID missing!' }
   if ([string]::IsNullOrWhitespace($env:OS_PASSWORD)) { throw 'OS_PASSWORD missing!' }
   if ([string]::IsNullOrWhitespace($env:OS_AUTH_URL)) { throw 'OS_AUTH_URL missing!' }
   if ([string]::IsNullOrWhitespace($env:OS_USERNAME)) { throw 'OS_USERNAME missing!' }
   if ([string]::IsNullOrWhitespace($env:OS_TENANT_NAME)) { throw 'OS_TENANT_NAME missing!' }
+
+  $novaBinProcess = Start-Process -Wait -PassThru -NoNewWindow $novaBin "$(Get-InsecureFlag) version-list"
+  if ($novaBinProcess.ExitCode -ne 0)
+  {
+    throw 'Failed to get API information. Check your OS_* variables.'
+  }
+  else
+  {
+    Write-Verbose "OS_* vars check successful."
+  }
+
 }
