@@ -13,13 +13,27 @@ function New-Image {
       Glazier create-image commandlet
   .DESCRIPTION
       Creates a Windows Server 2012 R2 qcow2 image that is ready to be booted for installation on OpenStack.
-  .PARAMETER name
+  .PARAMETER Name
       A name for the image you want to create
+  .PARAMETER GlazierProfilePath
+      Path to the glazier profile directory
+  .PARAMETER WindowsISOMountPath
+      Specifies the location of the Windows iso image
+  .PARAMETER VirtIOPath
+      Specifies the path to the virtio iso image
+  .PARAMETER SizeInMB
+      New Image disk size
+  .PARAMETER Workspace
+      Location for the working directory
+  .PARAMETER CleanupWhenDone
+      Clean up created files after task is finished
+  .PARAMETER ProductKey
+      Windows product key
   .NOTES
       Author: Hewlett-Packard Development Company
       Date:   April 8, 2015
   .EXAMPLE
-  Create-Image -Name "Windows 2012 R2 Core"
+  New-Image -Name "Windows 2012 R2 Core" -GlazierProfilePath "C:\profile"
   #>
   [CmdletBinding()]
   param(
@@ -31,7 +45,7 @@ function New-Image {
     [string]$VirtIOPath='',
     [int]$SizeInMB=25000,
     [string]$Workspace='c:\workspace',
-    [switch]$CleanupWhenDone=$true,
+    [switch]$CleanupWhenDone=$true,    
     [string]$ProductKey=''
   )
 
@@ -43,14 +57,29 @@ function New-Image {
     $WindowsISOMountPath = Get-WindowsISOMountPath
   }
 
+  if ([string]::IsNullOrWhitespace($WindowsISOMountPath))
+  {
+    $WindowsISOMountPath = Read-Host "Windows ISO Mount Path:"
+  }
+
   if ([string]::IsNullOrWhitespace($VirtIOPath))
   {
     $VirtIOPath = Get-VirtIOPath
   }
 
+  if ([string]::IsNullOrWhitespace($VirtIOPath))
+  {
+    $VirtIOPath = Read-Host "VirtIO ISO Path:"
+  }
+
   if ([string]::IsNullOrWhitespace($ProductKey))
   {
     $ProductKey = Get-ProductKey
+  }
+
+    if ([string]::IsNullOrWhitespace($ProductKey))
+  {
+    $ProductKey = Read-Host "Windows Product Key:"
   }
 
   if ([string]::IsNullOrWhitespace($GlazierProfilePath))
@@ -174,17 +203,27 @@ function New-Image {
 function Initialize-Image {
   <#
   .SYNOPSIS
-      Glazier Setup-Image commandlet
+      Glazier Initialize-Image commandlet
   .DESCRIPTION
       If needed, uploads a Windows 2012 R2 qcow2 image created using
-      Create-Image, then boots it using Nova
-  .PARAMETER ImagePath
-      Path to a qcow2 image created using Create-Image
+      New-Image, then boots it using Nova
+  .PARAMETER Qcow2ImagePath
+      Path to a qcow2 image created using New-Image
+  .PARAMETER ImageName
+      Name for the image being created
+  .PARAMETER OpenStackKeyName
+      OpenStack key name
+  .PARAMETER OpenStackSecurityGroup
+      OpenStack security group
+  .PARAMETER OpenStackNetworkId
+      OpenStack network id
+  .PARAMETER OpenStackFlavor
+      OpenStack VM flavor
   .NOTES
       Author: Hewlett-Packard Development Company
       Date:   April 8, 2015
   .EXAMPLE
-  Create-Image -Name "Windows 2012 R2 Core"
+  Initialize-Image -Name "Windows 2012 R2 Core" -Qcow2ImagePath "C:\workspace\image.qcow2"
   #>
   [CmdletBinding()]
   param(
@@ -215,9 +254,19 @@ function Initialize-Image {
     $OpenStackKeyName = Get-HostArg "os-key-name"
   }
 
+  if ([string]::IsNullOrWhitespace($OpenStackKeyName))
+  {
+    $OpenStackKeyName = Read-Host "Openstack SSH Key Name:"
+  }
+
   if ([string]::IsNullOrWhitespace($OpenStackSecurityGroup))
   {
     $OpenStackSecurityGroup = Get-HostArg "os-security-group"
+  }
+
+  if ([string]::IsNullOrWhitespace($OpenStackSecurityGroup))
+  {
+    $OpenStackSecurityGroup = Read-Host "Openstack Security Group Name:"
   }
 
   if ([string]::IsNullOrWhitespace($OpenStackNetworkId))
@@ -225,9 +274,19 @@ function Initialize-Image {
     $OpenStackNetworkId = Get-HostArg "os-network-id"
   }
 
+  if ([string]::IsNullOrWhitespace($OpenStackNetworkId))
+  {
+    $OpenStackNetworkId = Read-Host "Openstack Network ID:"
+  }
+
   if ([string]::IsNullOrWhitespace($OpenStackFlavor))
   {
     $OpenStackFlavor = Get-HostArg "os-flavor"
+  }
+
+  if ([string]::IsNullOrWhitespace($OpenStackFlavor))
+  {
+    $OpenStackFlavor = Read-Host "Openstack VM Flavor"
   }
 
   Set-OpenStackVars
@@ -350,9 +409,19 @@ function Push-Resources {
     $OpenStackKeyName = Get-HostArg "os-key-name"
   }
 
+  if ([string]::IsNullOrWhitespace($OpenStackKeyName))
+  {
+    $OpenStackKeyName = Read-Host "Openstack SSH Key Name:"
+  }
+
   if ([string]::IsNullOrWhitespace($OpenStackSecurityGroup))
   {
     $OpenStackSecurityGroup = Get-HostArg "os-security-group"
+  }
+
+  if ([string]::IsNullOrWhitespace($OpenStackSecurityGroup))
+  {
+    $OpenStackSecurityGroup = Read-Host "Openstack Security Group Name:"
   }
 
   if ([string]::IsNullOrWhitespace($OpenStackNetworkId))
@@ -360,9 +429,19 @@ function Push-Resources {
     $OpenStackNetworkId = Get-HostArg "os-network-id"
   }
 
+  if ([string]::IsNullOrWhitespace($OpenStackNetworkId))
+  {
+    $OpenStackNetworkId = Read-Host "Openstack Network ID:"
+  }
+
   if ([string]::IsNullOrWhitespace($OpenStackFlavor))
   {
     $OpenStackFlavor = Get-HostArg "os-flavor"
+  }
+
+  if ([string]::IsNullOrWhitespace($OpenStackFlavor))
+  {
+    $OpenStackFlavor = Read-Host "Openstack VM Flavor"
   }
 
   $VmName = "${Image}-glazier-temp-instance-DO-NOT-USE"
