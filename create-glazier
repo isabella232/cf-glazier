@@ -21,8 +21,10 @@ os_security_group=""
 os_flavor=""
 whoami=`id -u`
 insecure="false"
+#fullpath=`readlink -f $0`
+glazierpath=`dirname $0`
+glazier_version=`cat ${glazierpath}/.glazier_version`
 
-glazier_version=`cat .glazier_version`
 
 # shows the users the script's syntax
 function show_help()
@@ -320,8 +322,8 @@ function create_vfd()
 
 		# recursively copy all assets
 		info 3 "Copying assets to the floppy drive"
-		run 3 cp -R ${assetsdir}/* ${vmpath}/floppy
-		run 3 cp -R glazier-scripts/* ${vmpath}/floppy
+		run 3 cp -R ${glazierpath}/${assetsdir}/* ${vmpath}/floppy
+		run 3 cp -R ${glazierpath}/glazier-scripts/* ${vmpath}/floppy
 
 		# copying csv files
 		info 3 "Moving argument list csv file to the floppy"
@@ -355,7 +357,7 @@ function create_vfd()
 
 		# put the product key in autounattend.xml
 		info 3 "Replacing product key in autounattend.xml"
-		cat ${vmpath}/floppy/autounattend.xml | sed s/PRODUCT-KEY-DO-NOT-CHANGE-THIS-LINE/${productkey}/g >${tmpdir}/autounattend.xml
+		cat ${glazierpath}/${assetsdir}/autounattend.xml | sed s/PRODUCT-KEY-DO-NOT-CHANGE-THIS-LINE/${productkey}/g >${tmpdir}/autounattend.xml
 		run 2 mv -f ${tmpdir}/autounattend.xml ${vmpath}/floppy/autounattend.xml
 
 		# unmount the image
@@ -382,8 +384,8 @@ function create_vfd()
 
 		# recursively copy all assets
 		info 3 "Copying assets to the floppy drive"
-		run 3 cp -R ${assetsdir}/* /Volumes/${floppyname}/
-		run 3 cp -R glazier-scripts/* /Volumes/${floppyname}/
+		run 3 cp -R ${glazierpath}/${assetsdir}/* /Volumes/${floppyname}/
+		run 3 cp -R ${glazierpath}/glazier-scripts/* /Volumes/${floppyname}/
 
 		# copying csv files
 		info 3 "Moving argument list csv file to the floppy"
@@ -417,7 +419,7 @@ function create_vfd()
 
 		# put the product key in autounattend.xml
 		info 3 "Replacing product key in autounattend.xml"
-		cat ${assetsdir}/autounattend.xml | sed s/PRODUCT-KEY-DO-NOT-CHANGE-THIS-LINE/${productkey}/g >${tmpdir}/autounattend.xml
+		cat ${glazierpath}/${assetsdir}/autounattend.xml | sed s/PRODUCT-KEY-DO-NOT-CHANGE-THIS-LINE/${productkey}/g >${tmpdir}/autounattend.xml
 		run 2 mv -f ${tmpdir}/autounattend.xml /Volumes/${floppyname}/autounattend.xml
 
 		# unmount the image
