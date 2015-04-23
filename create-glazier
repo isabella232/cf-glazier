@@ -22,16 +22,7 @@ os_flavor=""
 whoami=`id -u`
 insecure="false"
 
-# if this script is ran from jenkins, get the build number. If not, set the minor version to "unspecified"
-if [ ! -z "${BUILD_NUMBER}" ];
-then
-	glazier_version_minor=${BUILD_NUMBER}
-else
-	glazier_version_minor="unspecified"
-fi
-
-glazier_version_major="0"
-glazier_version="${glazier_version_major}.${glazier_version_minor}"
+glazier_version=`cat .glazier_version`
 
 # shows the users the script's syntax
 function show_help()
