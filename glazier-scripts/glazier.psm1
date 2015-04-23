@@ -338,7 +338,8 @@ function Initialize-Image {
     Update-ImageProperty $finalImageName 'com.hp__1__os_distro' 'com.microsoft.server'
 
     Write-Output "Updating image requirements ..."
-    Update-ImageInfo $finalImageName [int]([Math]::Ceiling(25000 / 1024)) 2048
+    $minDiskSize = [int]([Math]::Ceiling(25000 / 1024))
+    Update-ImageInfo $finalImageName $mindiskSize 2048
   }
   finally
   {

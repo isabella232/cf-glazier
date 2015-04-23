@@ -120,6 +120,8 @@ try
     $Host.UI.RawUI.WindowTitle = "Running SetSetupComplete..."
     & "$programFilesDir\Cloudbase Solutions\Cloudbase-Init\bin\SetSetupComplete.cmd"
 
+    & ipconfig /release
+
     $Host.UI.RawUI.WindowTitle = "Running Sysprep..."
     & "$ENV:SystemRoot\System32\Sysprep\Sysprep.exe" `/generalize `/oobe `/shutdown `/unattend:"$unattendXML"
   }
