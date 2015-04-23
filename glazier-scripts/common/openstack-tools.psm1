@@ -486,7 +486,7 @@ function Update-ImageProperty{[CmdletBinding()]param($imageName, $propertyName, 
 
 function Update-ImageInfo{[CmdletBinding()]param([string]$imageName, [int]$minDiskGB, [int]$minRamMB)
   Write-Verbose "Updating image '${imageName}' minimum requirements ..."
-  $updateImageProcess = Start-Process -Wait -PassThru -NoNewWindow $glanceBin "image-update --property --min-disk ${minDiskGB} --min-ram ${minRamMB} `"${imageName}`""
+  $updateImageProcess = Start-Process -Wait -PassThru -NoNewWindow $glanceBin "image-update --min-disk ${minDiskGB} --min-ram ${minRamMB} `"${imageName}`""
   if ($updateImageProcess.ExitCode -ne 0)
   {
     throw 'Update image info failed.'

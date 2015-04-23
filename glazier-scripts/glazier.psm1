@@ -334,8 +334,10 @@ function Initialize-Image {
     Create-VMSnapshot $tempVMName $finalImageName
 
     Write-Output "Updating image metadata ..."
-    Update-ImageProperty $finalImageName 'architecture' 'i686'
+    Update-ImageProperty $finalImageName 'architecture' 'x86_64'
     Update-ImageProperty $finalImageName 'com.hp__1__os_distro' 'com.microsoft.server'
+    Update-ImageProperty $finalImageName 'com.hp__1__bootable_volume' 'true'
+    Update-ImageProperty $finalImageName 'com.hp__1__image_type' 'disk'
 
     Write-Output "Updating image requirements ..."
     $minDiskSize = [int]([Math]::Ceiling(25000 / 1024))

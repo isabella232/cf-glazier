@@ -32,12 +32,12 @@ if (!(Verify-PythonClientsInstallation))
 
 
 $name = 'windea-test1'
-$glazierProfile = 'c:\Users\stackato\code\cf-glazier-profiles\windea'
+$glazierProfile = 'c:\users\stackato\code\cf-glazier-profiles\windea'
 $windowsISOMountPath="d:\"
 $virtIOPath="c:\assets\virtio"
 $workspace = "c:\workspace"
 
-New-Image -Name $name -GlazierProfile $glazierProfile -WindowsISOMountPath $WindowsISOMountPath -VirtIOPath $virtIOPath -Verbose -Workspace $workspace
+#New-Image -Name $name -GlazierProfile $glazierProfile -WindowsISOMountPath $WindowsISOMountPath -VirtIOPath $virtIOPath -Verbose -Workspace $workspace
 
 # ************************************************************
 # ****************************** STEP3 - CREATE IMAGE
@@ -51,15 +51,15 @@ $env:OS_USERNAME = "vlad"
 $env:OS_TENANT_NAME = "vlad"
 $env:OS_CACERT = "c:\assets\os_cacert.pem"
 
-$imageName = "windea-test1"
-$qcow2source = "c:\workspace\windea-test120150421232025.qcow2"
+$imageName = "windea-test7"
+$qcow2source = "c:\workspace\windea-test120150423164304.qcow2"
 $osKeyName = "vlad-key"
 $osSecurityGroup = "default"
 $osNetworkId = "e8871d2b-da09-4ece-8785-530da230c6b8"
 $osFlavor = "m1.xlarge"
 
 
-#Initialize-Image -Verbose -Qcow2ImagePath $qcow2source -ImageName $imageName -OpenStackKeyName $osKeyName -OpenStackSecurityGroup $osSecurityGroup -OpenStackNetworkId $osNetworkId -OpenStackFlavor $osFlavor
+Initialize-Image -Verbose -Qcow2ImagePath $qcow2source -ImageName $imageName -OpenStackKeyName $osKeyName -OpenStackSecurityGroup $osSecurityGroup -OpenStackNetworkId $osNetworkId -OpenStackFlavor $osFlavor
 
 
 # ************************************************************
