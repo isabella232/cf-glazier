@@ -59,7 +59,7 @@ $osNetworkId = "e8871d2b-da09-4ece-8785-530da230c6b8"
 $osFlavor = "m1.xlarge"
 
 
-Initialize-Image -Verbose -Qcow2ImagePath $qcow2source -ImageName $imageName -OpenStackKeyName $osKeyName -OpenStackSecurityGroup $osSecurityGroup -OpenStackNetworkId $osNetworkId -OpenStackFlavor $osFlavor -Cleanup:$false
+Initialize-Image -Verbose -Qcow2ImagePath $qcow2source -ImageName $imageName -OpenStackKeyName $osKeyName -OpenStackSecurityGroup $osSecurityGroup -OpenStackNetworkId $osNetworkId -OpenStackFlavor $osFlavor
 
 
 # ************************************************************

@@ -236,9 +236,10 @@ function Initialize-Image {
     [string]$OpenStackNetworkId,
     [string]$OpenStackFlavor,
     [string]$OpenStackSwiftContainer = 'glazier-images',
-    [switch]$Cleanup = $true
+    [switch]$Cleanup = $true,
+    [int]$DiskSizeInMB=25000
   )
-  
+
   if ($Cleanup -eq $false)
   {
     Write-Warning "Cleanup flag is set to false. Temporary images and instances will not be deleted."
@@ -307,34 +308,14 @@ function Initialize-Image {
 
     if (Validate-SwiftExistence)
     {
-      try
-      {
-        Write-Output "Creating a container on swift ..."
-        Create-SwiftContainer $OpenStackSwiftContainer
+      Write-Output "Creating a container on swift ..."
+      Create-SwiftContainer $OpenStackSwiftContainer
 
-        Write-Output "Detected an object store, uploading image to swift ..."
-        Upload-Swift $Qcow2ImagePath $OpenStackSwiftContainer $tempImageName
+      Write-Output "Detected an object store, uploading image to swift ..."
+      Upload-Swift $Qcow2ImagePath $OpenStackSwiftContainer $tempImageName
 
-        Write-Output "Creating temporary image ..."
-        Create-ImageFromSwift $tempImageName $OpenStackSwiftContainer $tempImageName
-      }
-      finally
-      {
-        try
-        {
-          if ($Cleanup)
-          {
-            Write-Output "Deleting temp image from swift ..."
-            Delete-SwiftContainer "${OpenStackSwiftContainer}_segments"
-            Delete-SwiftContainer $OpenStackSwiftContainer
-          }
-        }
-        catch
-        {
-          $errorMessage = $_.Exception.Message
-          Write-Warning "Failed to delete temp image '${tempImageName}' from swift (it probably doesn't exist): ${errorMessage}"
-        }
-      }
+      Write-Output "Creating temporary image ..."
+      Create-ImageFromSwift $tempImageName $OpenStackSwiftContainer $tempImageName
     }
     else
     {
@@ -355,6 +336,9 @@ function Initialize-Image {
     Write-Output "Updating image metadata ..."
     Update-ImageProperty $finalImageName 'architecture' 'i686'
     Update-ImageProperty $finalImageName 'com.hp__1__os_distro' 'com.microsoft.server'
+
+    Write-Output "Updating image requirements ..."
+    Update-ImageInfo $finalImageName [int]([Math]::Ceiling(25000 / 1024)) 2048
   }
   finally
   {
@@ -384,6 +368,24 @@ function Initialize-Image {
     {
       $errorMessage = $_.Exception.Message
       Write-Warning "Failed to delete temp image '${tempImageName}' (the image probably doesn't exist): ${errorMessage}"
+    }
+
+    if (Validate-SwiftExistence)
+    {
+      try
+      {
+        if ($Cleanup)
+        {
+          Write-Output "Deleting temp image from swift ..."
+          Delete-SwiftContainer "${OpenStackSwiftContainer}_segments"
+          Delete-SwiftContainer $OpenStackSwiftContainer
+        }
+      }
+      catch
+      {
+        $errorMessage = $_.Exception.Message
+        Write-Warning "Failed to delete temp image '${tempImageName}' from swift (it probably doesn't exist): ${errorMessage}"
+      }
     }
   }
 }

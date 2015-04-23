@@ -385,6 +385,8 @@ function WaitFor-VMShutdown{[CmdletBinding()]param($vmName)
 
   $isVerbose = [bool]$PSBoundParameters["Verbose"]
   $instanceOffCount = 0
+  $instanceErrorCount = 0
+  $instanceUnknownCount = 0
 
   while ($instanceOffCount -lt 3)
   {
@@ -395,18 +397,33 @@ function WaitFor-VMShutdown{[CmdletBinding()]param($vmName)
 
     if (${vmStatus} -eq 'ERROR')
     {
-      if ($isVerbose)
-      {
-        [Console]::Out.Write("E")
-      }
-
-      Write-Output "Error"
-      throw 'VM is in an error state.'
+      $instanceErrorCount = $instanceErrorCount + 1
+    }
+    else
+    {
+      $instanceErrorCount = 0
     }
 
     if ([string]::IsNullOrWhitespace(${vmStatus}) -eq $true)
     {
-      Write-Output "Error"
+      $vmStatus = "U"
+
+      $instanceUnknownCount = $instanceUnknownCount + 1
+    }
+    else
+    {
+      $instanceUnknownCount = 0
+    }
+
+    if ($instanceErrorCount -gt 3)
+    {
+      Write-Output " Error"
+      throw 'VM is in an error state.'
+    }
+
+    if ($instanceUnknownCount -gt 3)
+    {
+      Write-Output " Unknown"
       throw 'VM is in an unknown state.'
     }
 
@@ -417,11 +434,11 @@ function WaitFor-VMShutdown{[CmdletBinding()]param($vmName)
 
     if ($vmStatus -eq 'SHUTOFF')
     {
-      $instanceOff = $instanceOff + 1
+      $instanceOffCount = $instanceOffCount + 1
     }
     else
     {
-      $instanceOff = 0
+      $instanceOffCount = 0
     }
   }
 
@@ -464,6 +481,19 @@ function Update-ImageProperty{[CmdletBinding()]param($imageName, $propertyName, 
   else
   {
     Write-Verbose "Update image property was successful."
+  }
+}
+
+function Update-ImageInfo{[CmdletBinding()]param($imageName, $minDiskGB, $minRamMB)
+  Write-Verbose "Updating image '${imageName}' minimum requirements ..."
+  $updateImageProcess = Start-Process -Wait -PassThru -NoNewWindow $glanceBin "image-update --property --min-disk ${minDiskGB} --min-ram ${minRamMB} `"${imageName}`""
+  if ($updateImageProcess.ExitCode -ne 0)
+  {
+    throw 'Update image info failed.'
+  }
+  else
+  {
+    Write-Verbose "Update image info was successful."
   }
 }
 
