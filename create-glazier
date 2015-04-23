@@ -38,7 +38,7 @@ Available options:
 --profile PATH					- (optional) path to a glazier profile directory.
 						  Can be used multiple times
 --vm-path PATH					- (optional) path to a directory where VBox files will
-						  be saved. The default is ~/.glazier. Make sure to have at least 10GB free
+						  be saved. The default is ~/.glazier. Make sure to have at least 100GB free
 --product-key KEY				- (required) Windows product key
 --os-network-id NETWORK_ID			- (required) OpenStack network id
 --os-key-name KEY_NAME				- (required) OpenStack key name
