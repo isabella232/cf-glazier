@@ -3,6 +3,7 @@ Import-Module A:\glazier.psm1
 Import-Module -DisableNameChecking 'A:\common\qemu-img-tools.psm1'
 Import-Module -DisableNameChecking 'A:\common\openstack-tools.psm1'
 Import-Module -DisableNameChecking 'A:\common\glazier-hostutils.psm1'
+Import-Module -DisableNameChecking 'A:\common\glazier-profile-tools.psm1'
 
 if ((Verify-QemuImg) -eq $false)
 {
@@ -25,3 +26,5 @@ echo @"
 Welcome to glazier!
 
 "@
+
+Get-Profiles
