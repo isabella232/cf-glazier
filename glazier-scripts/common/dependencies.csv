@@ -5,3 +5,4 @@ python,https://www.python.org/ftp/python/2.7.9/python-2.7.9.msi
 easy-install,https://bootstrap.pypa.io/ez_setup.py
 python-novaclient-version,2.23.0
 python-glanceclient-version,0.17.0
+python-swiftclient-version,2.4.0

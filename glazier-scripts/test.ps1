@@ -31,40 +31,43 @@ if (!(Verify-PythonClientsInstallation))
 # ************************************************************
 
 
-$name = 'surub'
-$glazierProfile = 'c:\Users\Administrator\code\cf-glazier-profiles\mssql2012'
-$windowsISOMountPath="c:\assets\winiso"
+$name = 'mssql2014-test1'
+$glazierProfile = 'c:\users\stackato\code\cf-glazier-profiles\mssql2014'
+$windowsISOMountPath="d:\"
 $virtIOPath="c:\assets\virtio"
-$workspace = "d:\workspace"
+$workspace = "c:\workspace"
 
 New-Image -Name $name -GlazierProfile $glazierProfile -WindowsISOMountPath $WindowsISOMountPath -VirtIOPath $virtIOPath -Verbose -Workspace $workspace
-
 
 # ************************************************************
 # ****************************** STEP3 - CREATE IMAGE
 # ************************************************************
 
-$env:OS_REGION_NAME = "region-b.geo-1"
-$env:OS_TENANT_ID = "10990308817909"
-$env:OS_PASSWORD = "password1234!"
-$env:OS_AUTH_URL = "https://region-a.geo-1.identity.hpcloudsvc.com:35357/v2.0/"
-$env:OS_USERNAME = "viovanov"
-$env:OS_TENANT_NAME = "Hewlettpackard6525"
+$env:OS_REGION_NAME = "regionOne"
+$env:OS_TENANT_ID = "fa6960fa0a3e4ffc86504c02953b1987"
+$env:OS_PASSWORD = "password"
+$env:OS_AUTH_URL = "https://10.9.231.35:5000/v2.0"
+$env:OS_USERNAME = "vlad"
+$env:OS_TENANT_NAME = "vlad"
+$env:OS_CACERT = "c:\assets\os_cacert.pem"
 
-$imageName = "surub"
-$qcow2source = "d:\workspace\sticla20150419035849.qcow2"
+$imageName = "windea-test7"
+$qcow2source = "c:\workspace\windea-test120150424154426.qcow2"
 $osKeyName = "vlad-key"
 $osSecurityGroup = "default"
-$osNetworkId = "c62508f5-b5a7-4e7e-b9ea-c9b69ac60bbe"
-$osFlavor = "standard.2xlarge"
+$osNetworkId = "e8871d2b-da09-4ece-8785-530da230c6b8"
+$osFlavor = "m1.xlarge"
 
 
-Initialize-Image -Verbose -Qcow2ImagePath $qcow2source -ImageName $imageName -OpenStackKeyName $osKeyName -OpenStackSecurityGroup $osSecurityGroup -OpenStackNetworkId $osNetworkId -OpenStackFlavor $osFlavor
+#Initialize-Image -Verbose -Qcow2ImagePath $qcow2source -ImageName $imageName -OpenStackKeyName $osKeyName -OpenStackSecurityGroup $osSecurityGroup -OpenStackNetworkId $osNetworkId -OpenStackFlavor $osFlavor
 
- 
+
 # ************************************************************
 # ****************************** OTHER STUFF
 # ************************************************************
+
+#Get-SwiftToGlanceUrl "glazier-images" "win kajs hdkjasd 8923 #dea" -Verbose
+#Validate-SwiftExistence -Verbose
 
 
 # Stable VirtIO

@@ -58,6 +58,18 @@ try
        mkdir $infoDir
     }
 
+    # Copy the print password script
+    $Host.UI.RawUI.WindowTitle = "Setting up print password script ..."
+    $originalPrintPasswordScript = Join-Path ${resourcesDir} 'print-password.ps1'
+    $printPasswordScript = "$programFilesDir\Cloudbase Solutions\Cloudbase-Init\LocalScripts\printPassword.ps1"
+    Copy-Item -Force $originalPrintPasswordScript $printPasswordScript
+
+    # Copy the unattend xml
+    $Host.UI.RawUI.WindowTitle = "Copying unattend xml ..."
+    $originalUnattendXML = Join-Path ${resourcesDir} 'first-boot-unattend.xml'
+    $unattendXML = Join-Path $infoDir 'unattend.xml'
+    Copy-Item -Force $originalUnattendXML $unattendXML
+
     # Compile .NET assemblies
     $Host.UI.RawUI.WindowTitle = "Compiling .NET assemblies ..."
     $compileDotNetAssembliesScript = Join-Path ${resourcesDir} 'compile-dotnet-assemblies.bat'
@@ -70,6 +82,7 @@ try
 
     # Save the compact script and unpack/save utilities
     # unpack sdelete
+    $Host.UI.RawUI.WindowTitle = "Saving compact utilities ..."
     $sdeleteZip = Join-Path ${resourcesDir} 'sdelete.zip'
     $sdeleteUnpackLocation = Join-Path ${env:WINDIR} 'temp'
     [System.IO.Compression.ZipFile]::ExtractToDirectory($sdeleteZip, $sdeleteUnpackLocation)
@@ -83,6 +96,7 @@ try
     Copy-Item -Force $originalCompactScript $compactScript
 
     # Cleanup
+    $Host.UI.RawUI.WindowTitle = "Removing glazier dir ..."
     Remove-Item -Recurse -Force $resourcesDir
     Remove-Item -Force "$ENV:SystemDrive\Unattend.xml"
 
@@ -91,6 +105,7 @@ try
     Remove-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon" -Name AutoLogonCount
 
     # Cleanup of Windows Updates
+    $Host.UI.RawUI.WindowTitle = "Running DISM ..."
     & Dism.exe /online /Cleanup-Image /StartComponentCleanup
 
     # Compact
@@ -105,9 +120,10 @@ try
     $Host.UI.RawUI.WindowTitle = "Running SetSetupComplete..."
     & "$programFilesDir\Cloudbase Solutions\Cloudbase-Init\bin\SetSetupComplete.cmd"
 
+    & ipconfig /release
+
     $Host.UI.RawUI.WindowTitle = "Running Sysprep..."
-    $unattendedXmlPath = "$programFilesDir\Cloudbase Solutions\Cloudbase-Init\conf\Unattend.xml"
-    & "$ENV:SystemRoot\System32\Sysprep\Sysprep.exe" `/generalize `/oobe `/shutdown `/unattend:"$unattendedXmlPath"
+    & "$ENV:SystemRoot\System32\Sysprep\Sysprep.exe" `/generalize `/oobe `/shutdown `/unattend:"$unattendXML"
   }
 }
 catch

@@ -6,6 +6,7 @@ $pythonDir = Join-Path $env:SYSTEMDRIVE 'Python27'
 $pythonScriptDir = Join-Path $pythonDir 'Scripts'
 $glanceBin = Join-Path $pythonScriptDir 'glance.exe'
 $novaBin = Join-Path $pythonScriptDir 'nova.exe'
+$swiftBin = Join-Path $pythonScriptDir 'swift.exe'
 
 
 function Get-InsecureFlag{[CmdletBinding()]param()
@@ -20,7 +21,7 @@ function Get-InsecureFlag{[CmdletBinding()]param()
 }
 
 function Verify-PythonClientsInstallation{[CmdletBinding()]param()
-    return ((Check-NovaClient) -and (Check-GlanceClient))
+  return ((Check-NovaClient) -and (Check-GlanceClient) -and (Check-SwiftClient))
 }
 
 function Install-PythonClients{[CmdletBinding()]param()
@@ -31,6 +32,7 @@ function Install-PythonClients{[CmdletBinding()]param()
     Install-Pip
     Install-NovaClient
     Install-GlanceClient
+    Install-SwiftClient
     Write-Output "Done"
 }
 
@@ -189,6 +191,147 @@ function Install-GlanceClient{[CmdletBinding()]param()
     Write-Output "Finished installing glance client"
 }
 
+function Check-SwiftClient{[CmdletBinding()]param()
+    return (Test-Path $swiftBin)
+}
+
+function Install-SwiftClient{[CmdletBinding()]param()
+    if(Check-SwiftClient)
+    {
+        Write-Output "SwiftClient already installed"
+        return
+    }
+    Write-Output "Installing python-swiftclient ..."
+    $swiftVersion = Get-Dependency "python-swiftclient-version"
+    $installProcess = Start-Process -Wait -PassThru -NoNewWindow "${pythonScriptDir}\pip.exe" "install python-swiftclient==${swiftVersion}"
+    if (($installProcess.ExitCode -ne 0) -or !(Check-GlanceClient))
+    {
+        throw 'Installing swift client failed.'
+    }
+
+    Write-Output "Finished installing swift client"
+}
+
+function Create-SwiftContainer{[CmdletBinding()]param($container)
+  Write-Verbose "Creating container '${container}' in swift ..."
+
+  $createProcess = Start-Process -Wait -PassThru -NoNewWindow $swiftBin "post ${container}"
+
+  if ($createProcess.ExitCode -ne 0)
+  {
+    throw 'Creating swift container failed.'
+  }
+  else
+  {
+    Write-Verbose "[OK] Swift container created successfully."
+  }
+}
+
+function Upload-Swift{[CmdletBinding()]param($localPath, $container, $remotePath)
+  Write-Verbose "Uploading '${localPath}' to '${remotePath}' in container '${container}'"
+
+  # Use a 100MB segment size
+  $segmentSize = 1024 * 1024 * 100
+
+  $uploadProcess = Start-Process -Wait -PassThru -NoNewWindow $swiftBin "upload --segment-size ${segmentSize} --segment-threads 1 --object-name `"${remotePath}`" `"${container}`" `"${localPath}`""
+
+  if ($uploadProcess.ExitCode -ne 0)
+  {
+    throw 'Uploading to swift failed.'
+  }
+  else
+  {
+    Write-Verbose "[OK] Upload successful."
+  }
+}
+
+function Delete-SwiftContainer{[CmdletBinding()]param($container)
+  Write-Verbose "Deleting container '${container}'"
+
+  $deleteProcess = Start-Process -Wait -PassThru -NoNewWindow $swiftBin "delete `"${container}`""
+
+  if ($deleteProcess.ExitCode -ne 0)
+  {
+    throw 'Deleting from swift failed.'
+  }
+  else
+  {
+    Write-Verbose "[OK] Delete successful."
+  }
+}
+
+function Get-SwiftToGlanceUrl{[CmdletBinding()]param($container, $object)
+  [Reflection.Assembly]::LoadWithPartialName("System.Web") | Out-Null
+  $url = [UriBuilder]"${env:OS_AUTH_URL}"
+  $url.Scheme = "swift"
+  $url.Path = Join-Path $url.Path "${container}/${object}"
+  $url.UserName = [System.Web.HttpUtility]::UrlEncode("${env:OS_TENANT_NAME}:${env:OS_USERNAME}")
+  $url.Password = [System.Web.HttpUtility]::UrlEncode($env:OS_PASSWORD)
+
+  return $url.Uri.AbsoluteUri.ToString()
+}
+
+function Download-Swift{[CmdletBinding()]param($container, $remotePath, $localPath)
+  Write-Verbose "Downloading '${remotePath}' to '${localPath}' from container '${container}'"
+
+  $downloadProcess = Start-Process -Wait -PassThru -NoNewWindow $swiftBin "download --output `"${localPath}`" `"${container}`" `"${remotePath}`""
+
+  if ($downloadProcess.ExitCode -ne 0)
+  {
+    throw 'Downloading from swift failed.'
+  }
+  else
+  {
+    Write-Verbose "[OK] Download successful."
+  }
+}
+
+function Validate-SwiftExistence{[CmdletBinding()]param()
+  try
+  {
+    # Do not use swift storage on HP Public Cloud
+    if ($env:OS_AUTH_URL -like '*.hpcloudsvc.com:*')
+    {
+      return $false
+    }
+
+    if ([string]::IsNullOrWhitespace($env:OS_CACERT) -eq $false)
+    {
+      Import-509Certificate $env:OS_CACERT 'LocalMachine' 'Root'
+    }
+
+    $url = "${env:OS_AUTH_URL}/tokens"
+    $body = "{`"auth`":{`"passwordCredentials`":{`"username`": `"${env:OS_USERNAME}`",`"password`": `"${env:OS_PASSWORD}`"},`"tenantId`": `"${env:OS_TENANT_ID}`"}}"
+    $headers = @{"Content-Type"="application/json"}
+
+    # Make the call
+    $response = Invoke-WebRequest -UseBasicParsing -Uri $url -Method Post -Body $body -Headers $headers
+
+    $jsonResponse = ConvertFrom-Json $response.Content
+    $objectStore = ($jsonResponse.access.serviceCatalog | ? { $_.type -eq 'object-store'})
+
+    if ($objectStore -eq $null)
+    {
+        return $false
+    }
+
+    $endpoint = ($objectStore.endpoints | ? {$_.region -eq $env:OS_REGION_NAME})
+
+    if ($endpoint -eq $null)
+    {
+      return $false
+    }
+
+    Write-Verbose "Found the following swift url: $($endpoint.publicUrl)"
+    return $true
+  }
+  catch
+  {
+    $errorMessage = $_.Exception.Message
+    Write-Verbose "Error while trying to find a swift store: ${errorMessage}"
+    return $false
+  }
+}
 
 # Terminate a VM instance
 function Delete-VMInstance{[CmdletBinding()]param($vmName)
@@ -240,21 +383,67 @@ function Create-VMSnapshot{[CmdletBinding()]param($vmName, $imageName)
 
 # Wait for the instance to be shut down
 function WaitFor-VMShutdown{[CmdletBinding()]param($vmName)
-  $instanceOff = $false
-  while ($instanceOff -eq $false)
+
+  $isVerbose = [bool]$PSBoundParameters["Verbose"]
+  $instanceOffCount = 0
+  $instanceErrorCount = 0
+  $instanceUnknownCount = 0
+
+  while ($instanceOffCount -lt 3)
   {
-    Write-Output "Sleeping for 1 minute ..."
+    [Console]::Out.Write(".")
+
     Start-Sleep -s 60
     $vmStatus = (& $novaBin $(Get-InsecureFlag) show "${vmName}" --minimal | sls -pattern "^\| status\s+\|\s+(?<state>\w+)" | select -expand Matches | foreach {$_.groups["state"].value})
 
     if (${vmStatus} -eq 'ERROR')
     {
+      $instanceErrorCount = $instanceErrorCount + 1
+    }
+    else
+    {
+      $instanceErrorCount = 0
+    }
+
+    if ([string]::IsNullOrWhitespace(${vmStatus}) -eq $true)
+    {
+      $vmStatus = "U"
+
+      $instanceUnknownCount = $instanceUnknownCount + 1
+    }
+    else
+    {
+      $instanceUnknownCount = 0
+    }
+
+    if ($instanceErrorCount -gt 3)
+    {
+      Write-Output " Error"
       throw 'VM is in an error state.'
     }
 
-    Write-Output "Instance status is '${vmStatus}'"
-    $instanceOff = ($vmStatus -eq 'SHUTOFF')
+    if ($instanceUnknownCount -gt 3)
+    {
+      Write-Output " Unknown"
+      throw 'VM is in an unknown state.'
+    }
+
+    if ($isVerbose)
+    {
+      [Console]::Out.Write("$($vmStatus[0])")
+    }
+
+    if ($vmStatus -eq 'SHUTOFF')
+    {
+      $instanceOffCount = $instanceOffCount + 1
+    }
+    else
+    {
+      $instanceOffCount = 0
+    }
   }
+
+  Write-Output "Done"
 }
 
 # Boot a VM using the created image (it will install Windows unattended)
@@ -296,6 +485,19 @@ function Update-ImageProperty{[CmdletBinding()]param($imageName, $propertyName, 
   }
 }
 
+function Update-ImageInfo{[CmdletBinding()]param([string]$imageName, [int]$minDiskGB, [int]$minRamMB)
+  Write-Verbose "Updating image '${imageName}' minimum requirements ..."
+  $updateImageProcess = Start-Process -Wait -PassThru -NoNewWindow $glanceBin "image-update --min-disk ${minDiskGB} --min-ram ${minRamMB} `"${imageName}`""
+  if ($updateImageProcess.ExitCode -ne 0)
+  {
+    throw 'Update image info failed.'
+  }
+  else
+  {
+    Write-Verbose "Update image info was successful."
+  }
+}
+
 # Create an image based on the generated qcow2
 function Create-Image{[CmdletBinding()]param($imageName, $localQCOW2Image)
   Write-Verbose "Creating image '${imageName}' using glance ..."
@@ -310,10 +512,34 @@ function Create-Image{[CmdletBinding()]param($imageName, $localQCOW2Image)
   }
 }
 
-# List API versions, in order to check env vars
+# Create an image based on a swift url
+function Create-ImageFromSwift{[CmdletBinding()]param($imageName, $container, $object)
+  try
+  {
+    $swiftObjectUrl = Get-SwiftToGlanceUrl $container $object
+  }
+  catch
+  {
+    $errorMessage = $_.Exception.Message
+    throw "Could not generate a swift object url for glance: ${errorMessage}"
+  }
+
+  Write-Verbose "Creating image '${imageName}' using glance from swift source '${swiftObjectUrl}' ..."
+  $createImageProcess = Start-Process -Wait -PassThru -NoNewWindow $glanceBin "image-create --progress --disk-format qcow2 --container-format bare --location `"${swiftObjectUrl}`" --name `"${imageName}`""
+  if ($createImageProcess.ExitCode -ne 0)
+  {
+    throw 'Create image from swift failed.'
+  }
+  else
+  {
+    Write-Verbose "Create image from swift was successful. Sleeping 1 minute ..."
+    Start-Sleep -s 60
+  }
+}
+
+# check OS_* specific env vars
 function Validate-OSEnvVars{[CmdletBinding()]param()
   Write-Verbose "Checking OS_* env vars ..."
-
 
   if ([string]::IsNullOrWhitespace($env:OS_REGION_NAME)) { throw 'OS_REGION_NAME missing!' }
   if ([string]::IsNullOrWhitespace($env:OS_TENANT_ID)) { throw 'OS_TENANT_ID missing!' }
@@ -321,15 +547,4 @@ function Validate-OSEnvVars{[CmdletBinding()]param()
   if ([string]::IsNullOrWhitespace($env:OS_AUTH_URL)) { throw 'OS_AUTH_URL missing!' }
   if ([string]::IsNullOrWhitespace($env:OS_USERNAME)) { throw 'OS_USERNAME missing!' }
   if ([string]::IsNullOrWhitespace($env:OS_TENANT_NAME)) { throw 'OS_TENANT_NAME missing!' }
-
-  $novaBinProcess = Start-Process -Wait -PassThru -NoNewWindow $novaBin "$(Get-InsecureFlag) version-list"
-  if ($novaBinProcess.ExitCode -ne 0)
-  {
-    throw 'Failed to get API information. Check your OS_* variables.'
-  }
-  else
-  {
-    Write-Verbose "OS_* vars check successful."
-  }
-
 }

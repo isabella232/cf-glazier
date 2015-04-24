@@ -45,7 +45,7 @@ function New-Image {
     [string]$VirtIOPath='',
     [int]$SizeInMB=25000,
     [string]$Workspace='c:\workspace',
-    [switch]$CleanupWhenDone=$true,    
+    [switch]$CleanupWhenDone=$true,
     [string]$ProductKey=''
   )
 
@@ -59,7 +59,7 @@ function New-Image {
 
   if ([string]::IsNullOrWhitespace($WindowsISOMountPath))
   {
-    $WindowsISOMountPath = Read-Host "Windows ISO Mount Path:"
+    $WindowsISOMountPath = Read-Host "Windows ISO Mount Path"
   }
 
   if ([string]::IsNullOrWhitespace($VirtIOPath))
@@ -69,7 +69,7 @@ function New-Image {
 
   if ([string]::IsNullOrWhitespace($VirtIOPath))
   {
-    $VirtIOPath = Read-Host "VirtIO ISO Path:"
+    $VirtIOPath = Read-Host "VirtIO ISO Path"
   }
 
   if ([string]::IsNullOrWhitespace($ProductKey))
@@ -79,7 +79,7 @@ function New-Image {
 
     if ([string]::IsNullOrWhitespace($ProductKey))
   {
-    $ProductKey = Read-Host "Windows Product Key:"
+    $ProductKey = Read-Host "Windows Product Key"
   }
 
   if ([string]::IsNullOrWhitespace($GlazierProfilePath))
@@ -234,8 +234,16 @@ function Initialize-Image {
     [string]$OpenStackKeyName,
     [string]$OpenStackSecurityGroup,
     [string]$OpenStackNetworkId,
-    [string]$OpenStackFlavor
+    [string]$OpenStackFlavor,
+    [string]$OpenStackSwiftContainer = 'glazier-images',
+    [switch]$Cleanup = $true,
+    [int]$DiskSizeInMB=25000
   )
+
+  if ($Cleanup -eq $false)
+  {
+    Write-Warning "Cleanup flag is set to false. Temporary images and instances will not be deleted."
+  }
 
   $isVerbose = [bool]$PSBoundParameters["Verbose"]
   $PSDefaultParameterValues = @{"*:Verbose"=$isVerbose}
@@ -248,6 +256,8 @@ function Initialize-Image {
   Write-Verbose "Temp image name will be ${tempImageName}"
   $finalImageName = "${ImageName}-${timestamp}"
   Write-Verbose "Final image name will be ${finalImageName}"
+  $OpenStackSwiftContainer = "${OpenStackSwiftContainer}-${tempImageName}"
+  Write-Verbose "Will be using ${OpenStackSwiftContainer} as a swift container name"
 
   if ([string]::IsNullOrWhitespace($OpenStackKeyName))
   {
@@ -256,7 +266,7 @@ function Initialize-Image {
 
   if ([string]::IsNullOrWhitespace($OpenStackKeyName))
   {
-    $OpenStackKeyName = Read-Host "Openstack SSH Key Name:"
+    $OpenStackKeyName = Read-Host "Openstack SSH Key Name"
   }
 
   if ([string]::IsNullOrWhitespace($OpenStackSecurityGroup))
@@ -266,7 +276,7 @@ function Initialize-Image {
 
   if ([string]::IsNullOrWhitespace($OpenStackSecurityGroup))
   {
-    $OpenStackSecurityGroup = Read-Host "Openstack Security Group Name:"
+    $OpenStackSecurityGroup = Read-Host "Openstack Security Group Name"
   }
 
   if ([string]::IsNullOrWhitespace($OpenStackNetworkId))
@@ -276,7 +286,7 @@ function Initialize-Image {
 
   if ([string]::IsNullOrWhitespace($OpenStackNetworkId))
   {
-    $OpenStackNetworkId = Read-Host "Openstack Network ID:"
+    $OpenStackNetworkId = Read-Host "Openstack Network ID"
   }
 
   if ([string]::IsNullOrWhitespace($OpenStackFlavor))
@@ -296,8 +306,23 @@ function Initialize-Image {
     Write-Output "Checking OS_* variables ..."
     Validate-OSEnvVars
 
-    Write-Output "Creating temporary image ..."
-    Create-Image $tempImageName $Qcow2ImagePath
+    if (Validate-SwiftExistence)
+    {
+      Write-Output "Creating a container on swift ..."
+      Create-SwiftContainer $OpenStackSwiftContainer
+
+      Write-Output "Detected an object store, uploading image to swift ..."
+      Upload-Swift $Qcow2ImagePath $OpenStackSwiftContainer $tempImageName
+
+      Write-Output "Creating temporary image ..."
+      Create-ImageFromSwift $tempImageName $OpenStackSwiftContainer $tempImageName
+    }
+    else
+    {
+      Write-Warning "Did not detect an object store, will try to upload image directly to glance ..."
+      Write-Output "Creating temporary image ..."
+      Create-Image $tempImageName $Qcow2ImagePath
+    }
 
     Write-Output "Booting temporary instance ..."
     Boot-VM $tempVMName $tempImageName $OpenStackKeyName $OpenStackSecurityGroup $OpenStackNetworkId $OpenStackFlavor $null
@@ -309,15 +334,24 @@ function Initialize-Image {
     Create-VMSnapshot $tempVMName $finalImageName
 
     Write-Output "Updating image metadata ..."
-    Update-ImageProperty $finalImageName 'architecture' 'i686'
+    Update-ImageProperty $finalImageName 'architecture' 'x86_64'
     Update-ImageProperty $finalImageName 'com.hp__1__os_distro' 'com.microsoft.server'
+    Update-ImageProperty $finalImageName 'com.hp__1__bootable_volume' 'true'
+    Update-ImageProperty $finalImageName 'com.hp__1__image_type' 'disk'
+
+    Write-Output "Updating image requirements ..."
+    $minDiskSize = [int]([Math]::Ceiling(25000 / 1024))
+    Update-ImageInfo $finalImageName $mindiskSize 2048
   }
   finally
   {
     try
     {
-      Write-Output "Deleting temp instance ..."
-      Delete-VMInstance $tempVMName
+      if ($Cleanup)
+      {
+        Write-Output "Deleting temp instance ..."
+        Delete-VMInstance $tempVMName
+      }
     }
     catch
     {
@@ -327,13 +361,34 @@ function Initialize-Image {
 
     try
     {
-      Write-Output "Deleting temp image ..."
-      Delete-Image $tempImageName
+      if ($Cleanup)
+      {
+        Write-Output "Deleting temp image ..."
+        Delete-Image $tempImageName
+      }
     }
     catch
     {
       $errorMessage = $_.Exception.Message
       Write-Warning "Failed to delete temp image '${tempImageName}' (the image probably doesn't exist): ${errorMessage}"
+    }
+
+    if (Validate-SwiftExistence)
+    {
+      try
+      {
+        if ($Cleanup)
+        {
+          Write-Output "Deleting temp image from swift ..."
+          Delete-SwiftContainer "${OpenStackSwiftContainer}_segments"
+          Delete-SwiftContainer $OpenStackSwiftContainer
+        }
+      }
+      catch
+      {
+        $errorMessage = $_.Exception.Message
+        Write-Warning "Failed to delete temp image '${tempImageName}' from swift (it probably doesn't exist): ${errorMessage}"
+      }
     }
   }
 }
@@ -411,7 +466,7 @@ function Push-Resources {
 
   if ([string]::IsNullOrWhitespace($OpenStackKeyName))
   {
-    $OpenStackKeyName = Read-Host "Openstack SSH Key Name:"
+    $OpenStackKeyName = Read-Host "Openstack SSH Key Name"
   }
 
   if ([string]::IsNullOrWhitespace($OpenStackSecurityGroup))
@@ -421,7 +476,7 @@ function Push-Resources {
 
   if ([string]::IsNullOrWhitespace($OpenStackSecurityGroup))
   {
-    $OpenStackSecurityGroup = Read-Host "Openstack Security Group Name:"
+    $OpenStackSecurityGroup = Read-Host "Openstack Security Group Name"
   }
 
   if ([string]::IsNullOrWhitespace($OpenStackNetworkId))
@@ -431,7 +486,7 @@ function Push-Resources {
 
   if ([string]::IsNullOrWhitespace($OpenStackNetworkId))
   {
-    $OpenStackNetworkId = Read-Host "Openstack Network ID:"
+    $OpenStackNetworkId = Read-Host "Openstack Network ID"
   }
 
   if ([string]::IsNullOrWhitespace($OpenStackFlavor))

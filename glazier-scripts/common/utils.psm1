@@ -65,7 +65,7 @@ function Download-File{[CmdletBinding()]param($url, $targetFile)
        $percentComplete = ((([System.Math]::Floor($downloadedBytes/1024)) / $totalLength)  * 100)
        Write-Progress -activity $activity -status $status -PercentComplete $percentComplete
 
-       $sw.Reset();
+       $sw.Reset()
        $sw.Start()
     }
   }
@@ -75,4 +75,23 @@ function Download-File{[CmdletBinding()]param($url, $targetFile)
   $targetStream.Close()
   $targetStream.Dispose()
   $responseStream.Dispose()
+}
+
+function Import-509Certificate{[CmdletBinding()]param($certPath, $certRootStore, $certStore)
+  Write-Verbose "Importing certificate '${certPath}' to '${certRootStore}\${certStore}'"
+  try
+  {
+    $pfx = new-object System.Security.Cryptography.X509Certificates.X509Certificate2
+    $pfx.import([string]$certPath)
+
+    $store = new-object System.Security.Cryptography.X509Certificates.X509Store($certStore,$certRootStore)
+    $store.open("MaxAllowed")
+    $store.add($pfx)
+    $store.close()
+  }
+  catch
+  {
+    $errorMessage = $_.Exception.Message
+    Write-Output "Could not import certificate '${certPath}': ${errorMessage}"
+  }
 }
