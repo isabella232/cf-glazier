@@ -21,7 +21,6 @@ os_security_group=""
 os_flavor=""
 whoami=`id -u`
 insecure="false"
-#fullpath=`readlink -f $0`
 glazierpath=`dirname $0`
 glazier_version=`cat ${glazierpath}/.glazier_version`
 
@@ -406,7 +405,7 @@ function create_vfd()
 		[ ! -d /Volumes/${floppyname}/profiles ] && run 3 mkdir -p /Volumes/${floppyname}/profiles
 		copy_profiles_to_floppy /Volumes/${floppyname}/profiles/
 
-		# create a csv file containing the drive letters for the isos
+		# create a csv file containing the drive letters for thel isos
 		info 3 "Mapping ISOs to drive letters"
 		map_drive_letters D E F G H >/Volumes/${floppyname}/driveletters.csv
 
@@ -462,6 +461,7 @@ function validate_net_connectivity()
 # check if the script's prerequisites are met
 function validate_prerequisites()
 {
+
 	info 2 "Checking prerequisites"
 
 	# check if virtualbox is installed
@@ -630,12 +630,6 @@ function validate_prerequisites()
 		exit 1
 	fi
 
-	# make sure at least one profile is specified
-	if [ -z "$profiles" ];
-	then
-		error 1 "You need to specify at least one --profile"
-		exit 1
-	fi
 
 	# validate virtualbox version
 	validate_virtualbox
@@ -793,8 +787,34 @@ function validate_profile()
 # goes trough all defined profiles and validates each of them
 function validate_profiles()
 {
+	# used to parse $profiles
 	local profile
 
+	# used for profile auto-loading (no profile specified, load them from ${glazierpath}/profiles
+	local autoprofile
+
+	# make sure at least one profile is specified
+	if [ -z "${profiles}" ];
+	then
+		error 1 "You haven't specified any profiles, trying to load them from ./profiles"
+
+		# try to autoload profiles from ${glazierpath}/profiles, except directories starting with "."
+		for autoprofile in `find ${glazierpath}/profiles/ -maxdepth 1 -mindepth 1 -type d ! -name ".*" 2>/dev/null`;
+		do
+			info 3 "Adding profile $autoprofile"
+			profiles="$profiles $autoprofile"
+		done
+
+		# check if any profiles were automatically added
+		if [ -z "${profiles}" ];
+		then
+			error 1 "No profiles were found in ${glazierpath}/profiles. Exiting..."
+			exit 1
+		fi
+	fi
+
+
+	# validate each profile
 	for profile in $profiles;
 	do
 		# validate each profile if its name is not empty
