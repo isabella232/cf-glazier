@@ -45,7 +45,7 @@ function New-Image {
     [string]$VirtIOPath='',
     [int]$SizeInMB=25000,
     [string]$Workspace='c:\workspace',
-    [switch]$CleanupWhenDone=$true,    
+    [switch]$CleanupWhenDone=$true,
     [string]$ProductKey=''
   )
 
@@ -59,7 +59,7 @@ function New-Image {
 
   if ([string]::IsNullOrWhitespace($WindowsISOMountPath))
   {
-    $WindowsISOMountPath = Read-Host "Windows ISO Mount Path:"
+    $WindowsISOMountPath = Read-Host "Windows ISO Mount Path"
   }
 
   if ([string]::IsNullOrWhitespace($VirtIOPath))
@@ -69,7 +69,7 @@ function New-Image {
 
   if ([string]::IsNullOrWhitespace($VirtIOPath))
   {
-    $VirtIOPath = Read-Host "VirtIO ISO Path:"
+    $VirtIOPath = Read-Host "VirtIO ISO Path"
   }
 
   if ([string]::IsNullOrWhitespace($ProductKey))
@@ -79,7 +79,7 @@ function New-Image {
 
     if ([string]::IsNullOrWhitespace($ProductKey))
   {
-    $ProductKey = Read-Host "Windows Product Key:"
+    $ProductKey = Read-Host "Windows Product Key"
   }
 
   if ([string]::IsNullOrWhitespace($GlazierProfilePath))
@@ -266,7 +266,7 @@ function Initialize-Image {
 
   if ([string]::IsNullOrWhitespace($OpenStackKeyName))
   {
-    $OpenStackKeyName = Read-Host "Openstack SSH Key Name:"
+    $OpenStackKeyName = Read-Host "Openstack SSH Key Name"
   }
 
   if ([string]::IsNullOrWhitespace($OpenStackSecurityGroup))
@@ -276,7 +276,7 @@ function Initialize-Image {
 
   if ([string]::IsNullOrWhitespace($OpenStackSecurityGroup))
   {
-    $OpenStackSecurityGroup = Read-Host "Openstack Security Group Name:"
+    $OpenStackSecurityGroup = Read-Host "Openstack Security Group Name"
   }
 
   if ([string]::IsNullOrWhitespace($OpenStackNetworkId))
@@ -286,7 +286,7 @@ function Initialize-Image {
 
   if ([string]::IsNullOrWhitespace($OpenStackNetworkId))
   {
-    $OpenStackNetworkId = Read-Host "Openstack Network ID:"
+    $OpenStackNetworkId = Read-Host "Openstack Network ID"
   }
 
   if ([string]::IsNullOrWhitespace($OpenStackFlavor))
@@ -466,7 +466,7 @@ function Push-Resources {
 
   if ([string]::IsNullOrWhitespace($OpenStackKeyName))
   {
-    $OpenStackKeyName = Read-Host "Openstack SSH Key Name:"
+    $OpenStackKeyName = Read-Host "Openstack SSH Key Name"
   }
 
   if ([string]::IsNullOrWhitespace($OpenStackSecurityGroup))
@@ -476,7 +476,7 @@ function Push-Resources {
 
   if ([string]::IsNullOrWhitespace($OpenStackSecurityGroup))
   {
-    $OpenStackSecurityGroup = Read-Host "Openstack Security Group Name:"
+    $OpenStackSecurityGroup = Read-Host "Openstack Security Group Name"
   }
 
   if ([string]::IsNullOrWhitespace($OpenStackNetworkId))
@@ -486,7 +486,7 @@ function Push-Resources {
 
   if ([string]::IsNullOrWhitespace($OpenStackNetworkId))
   {
-    $OpenStackNetworkId = Read-Host "Openstack Network ID:"
+    $OpenStackNetworkId = Read-Host "Openstack Network ID"
   }
 
   if ([string]::IsNullOrWhitespace($OpenStackFlavor))
