@@ -215,7 +215,7 @@ function Install-SwiftClient{[CmdletBinding()]param()
 function Create-SwiftContainer{[CmdletBinding()]param($container)
   Write-Verbose "Creating container '${container}' in swift ..."
 
-  $createProcess = Start-Process -Wait -PassThru -NoNewWindow $swiftBin "post ${container}"
+  $createProcess = Start-Process -Wait -PassThru -NoNewWindow $swiftBin "$(Get-InsecureFlag) post ${container}"
 
   if ($createProcess.ExitCode -ne 0)
   {
@@ -233,7 +233,7 @@ function Upload-Swift{[CmdletBinding()]param($localPath, $container, $remotePath
   # Use a 100MB segment size
   $segmentSize = 1024 * 1024 * 100
 
-  $uploadProcess = Start-Process -Wait -PassThru -NoNewWindow $swiftBin "upload --segment-size ${segmentSize} --segment-threads 1 --object-name `"${remotePath}`" `"${container}`" `"${localPath}`""
+  $uploadProcess = Start-Process -Wait -PassThru -NoNewWindow $swiftBin "$(Get-InsecureFlag) upload --segment-size ${segmentSize} --segment-threads 1 --object-name `"${remotePath}`" `"${container}`" `"${localPath}`""
 
   if ($uploadProcess.ExitCode -ne 0)
   {
@@ -248,7 +248,7 @@ function Upload-Swift{[CmdletBinding()]param($localPath, $container, $remotePath
 function Delete-SwiftContainer{[CmdletBinding()]param($container)
   Write-Verbose "Deleting container '${container}'"
 
-  $deleteProcess = Start-Process -Wait -PassThru -NoNewWindow $swiftBin "delete `"${container}`""
+  $deleteProcess = Start-Process -Wait -PassThru -NoNewWindow $swiftBin "$(Get-InsecureFlag) delete `"${container}`""
 
   if ($deleteProcess.ExitCode -ne 0)
   {
@@ -274,7 +274,7 @@ function Get-SwiftToGlanceUrl{[CmdletBinding()]param($container, $object)
 function Download-Swift{[CmdletBinding()]param($container, $remotePath, $localPath)
   Write-Verbose "Downloading '${remotePath}' to '${localPath}' from container '${container}'"
 
-  $downloadProcess = Start-Process -Wait -PassThru -NoNewWindow $swiftBin "download --output `"${localPath}`" `"${container}`" `"${remotePath}`""
+  $downloadProcess = Start-Process -Wait -PassThru -NoNewWindow $swiftBin "$(Get-InsecureFlag) download --output `"${localPath}`" `"${container}`" `"${remotePath}`""
 
   if ($downloadProcess.ExitCode -ne 0)
   {
@@ -487,7 +487,7 @@ function Update-ImageProperty{[CmdletBinding()]param($imageName, $propertyName, 
 
 function Update-ImageInfo{[CmdletBinding()]param([string]$imageName, [int]$minDiskGB, [int]$minRamMB)
   Write-Verbose "Updating image '${imageName}' minimum requirements ..."
-  $updateImageProcess = Start-Process -Wait -PassThru -NoNewWindow $glanceBin "image-update --min-disk ${minDiskGB} --min-ram ${minRamMB} `"${imageName}`""
+  $updateImageProcess = Start-Process -Wait -PassThru -NoNewWindow $glanceBin "$(Get-InsecureFlag) image-update --min-disk ${minDiskGB} --min-ram ${minRamMB} `"${imageName}`""
   if ($updateImageProcess.ExitCode -ne 0)
   {
     throw 'Update image info failed.'
@@ -525,7 +525,7 @@ function Create-ImageFromSwift{[CmdletBinding()]param($imageName, $container, $o
   }
 
   Write-Verbose "Creating image '${imageName}' using glance from swift source '${swiftObjectUrl}' ..."
-  $createImageProcess = Start-Process -Wait -PassThru -NoNewWindow $glanceBin "image-create --progress --disk-format qcow2 --container-format bare --location `"${swiftObjectUrl}`" --name `"${imageName}`""
+  $createImageProcess = Start-Process -Wait -PassThru -NoNewWindow $glanceBin "$(Get-InsecureFlag) image-create --progress --disk-format qcow2 --container-format bare --location `"${swiftObjectUrl}`" --name `"${imageName}`""
   if ($createImageProcess.ExitCode -ne 0)
   {
     throw 'Create image from swift failed.'
