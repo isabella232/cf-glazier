@@ -202,7 +202,7 @@ function Install-SwiftClient{[CmdletBinding()]param()
         return
     }
     Write-Output "Installing python-swiftclient ..."
-    $glanceVersion = Get-Dependency "python-swiftclient-version"
+    $swiftVersion = Get-Dependency "python-swiftclient-version"
     $installProcess = Start-Process -Wait -PassThru -NoNewWindow "${pythonScriptDir}\pip.exe" "install python-swiftclient==${swiftVersion}"
     if (($installProcess.ExitCode -ne 0) -or !(Check-GlanceClient))
     {
