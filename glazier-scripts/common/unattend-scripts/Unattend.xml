@@ -149,7 +149,7 @@
       <RunSynchronous>
         <RunSynchronousCommand wcm:action="add">
           <Order>1</Order>
-          <Path>cmd /c "powershell -NoLogo -NonInteractive -ExecutionPolicy Bypass -File %SystemDrive%\glazier\profile\specialize\specialize.ps1  2&gt;&amp;1 1&gt;>%WINDIR%\glazier_image\specialize.log"</Path>
+          <Path>powershell -NoLogo -NonInteractive -ExecutionPolicy Bypass -File %SystemDrive%\glazier\profile\specialize\specialize.ps1</Path>
           <Description>Run Glazier Profile specialize script</Description>
         </RunSynchronousCommand>
       </RunSynchronous>

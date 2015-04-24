@@ -261,11 +261,12 @@ function Delete-SwiftContainer{[CmdletBinding()]param($container)
 }
 
 function Get-SwiftToGlanceUrl{[CmdletBinding()]param($container, $object)
+  [Reflection.Assembly]::LoadWithPartialName("System.Web") | Out-Null
   $url = [UriBuilder]"${env:OS_AUTH_URL}"
   $url.Scheme = "swift"
   $url.Path = Join-Path $url.Path "${container}/${object}"
-  $url.UserName = "${env:OS_TENANT_NAME}%3A${env:OS_USERNAME}"
-  $url.Password = $env:OS_PASSWORD
+  $url.UserName = [System.Web.HttpUtility]::UrlEncode("${env:OS_TENANT_NAME}:${env:OS_USERNAME}")
+  $url.Password = [System.Web.HttpUtility]::UrlEncode($env:OS_PASSWORD)
 
   return $url.Uri.AbsoluteUri.ToString()
 }

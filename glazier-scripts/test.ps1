@@ -52,7 +52,7 @@ $env:OS_TENANT_NAME = "vlad"
 $env:OS_CACERT = "c:\assets\os_cacert.pem"
 
 $imageName = "windea-test7"
-$qcow2source = "c:\workspace\windea-test120150423164304.qcow2"
+$qcow2source = "c:\workspace\windea-test120150423211321.qcow2"
 $osKeyName = "vlad-key"
 $osSecurityGroup = "default"
 $osNetworkId = "e8871d2b-da09-4ece-8785-530da230c6b8"
