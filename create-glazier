@@ -45,6 +45,7 @@ Available options:
 --os-security-group SECURITY_GROUP		- (required) OpenStack security group
 --os-flavor FLAVOR				- (required) OpenStack flavor
 --insecure					- (optional) create a Windows image for a HDP that doesen't have an https certificate
+--windows-update-proxy					- (optional) proxy used for Windows Updates on image
 --dry-run					- (optional) run but don't make any changes
 --verbosity verbosity_level			- (optional) verbosity level is an interger between 1-3, with 1
 						  being the least verbose and 3 being the most verbose
@@ -254,6 +255,13 @@ function parse_parameters()
 			shift
 			info 3 "Got ${bldylw}os-flavor${txtrst} = ${os_flavor}"
 			echo os-flavor,${os_flavor} >>${tmpdir}/args.csv
+			;;
+		"--windows-update-proxy")
+			shift
+			wu_proxy=$1
+			shift
+			info 3 "Got ${bldylw}windows-update-proxy${txtrst} = ${wu_proxy}"
+			echo windows-update-proxy,${wu_proxy} >>${tmpdir}/args.csv
 			;;
 		"--help"|"-h")
 			show_help
