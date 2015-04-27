@@ -25,6 +25,6 @@ echo @"
 
 Welcome to glazier!
 
-The available profiles you can use are: $(Get-Profiles)
+The available profiles you can use are: $((Get-Profiles | Select -ExpandProperty Name) -join ", ")
 "@
 
