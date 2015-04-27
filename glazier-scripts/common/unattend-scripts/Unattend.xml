@@ -145,15 +145,6 @@
       <ComputerName>*</ComputerName>
       <ProductKey>XXXXX-XXXXX-XXXXX-XXXXX-XXXXX</ProductKey>
     </component>
-    <component name="Microsoft-Windows-Deployment" processorArchitecture="amd64" publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS" xmlns:wcm="http://schemas.microsoft.com/WMIConfig/2002/State" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-      <RunSynchronous>
-        <RunSynchronousCommand wcm:action="add">
-          <Order>1</Order>
-          <Path>powershell -NoLogo -NonInteractive -ExecutionPolicy Bypass -File %SystemDrive%\glazier\profile\specialize\specialize.ps1</Path>
-          <Description>Run Glazier Profile specialize script</Description>
-        </RunSynchronousCommand>
-      </RunSynchronous>
-    </component>
     <component name="Microsoft-Windows-SQMApi" processorArchitecture="amd64" publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="NonSxS" xmlns:wcm="http://schemas.microsoft.com/WMIConfig/2002/State" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
       <CEIPEnabled>0</CEIPEnabled>
     </component>
