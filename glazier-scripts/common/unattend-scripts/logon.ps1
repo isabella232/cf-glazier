@@ -82,6 +82,10 @@ try
     $unattendXML = Join-Path $infoDir 'unattend.xml'
     Copy-Item -Force $originalUnattendXML $unattendXML
 
+    # Run the specialize step
+    $Host.UI.RawUI.WindowTitle = "Running specialize script ..."
+    & (Join-Path $env:SystemDrive 'glazier\profile\specialize\specialize.ps1') | Out-File "${infoDir}\specialize.log"
+
     # Compile .NET assemblies
     $Host.UI.RawUI.WindowTitle = "Compiling .NET assemblies ..."
     $compileDotNetAssembliesScript = Join-Path ${resourcesDir} 'compile-dotnet-assemblies.bat'

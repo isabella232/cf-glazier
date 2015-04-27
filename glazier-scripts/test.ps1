@@ -31,8 +31,8 @@ if (!(Verify-PythonClientsInstallation))
 # ************************************************************
 
 
-$name = 'mssql2014-test1'
-$glazierProfile = 'c:\users\stackato\code\cf-glazier-profiles\mssql2014'
+$name = 'windea'
+$glazierProfile = 'c:\users\stackato\code\cf-glazier-profiles\windea'
 $windowsISOMountPath="d:\"
 $virtIOPath="c:\assets\virtio"
 $workspace = "c:\workspace"
@@ -51,12 +51,12 @@ $env:OS_USERNAME = "vlad"
 $env:OS_TENANT_NAME = "vlad"
 $env:OS_CACERT = "c:\assets\os_cacert.pem"
 
-$imageName = "windea-test7"
-$qcow2source = "c:\workspace\windea-test120150424154426.qcow2"
+$imageName = "windea"
+$qcow2source = "c:\workspace\mssql201220150426114307.qcow2"
 $osKeyName = "vlad-key"
 $osSecurityGroup = "default"
 $osNetworkId = "e8871d2b-da09-4ece-8785-530da230c6b8"
-$osFlavor = "m1.xlarge"
+$osFlavor = "m1.medium"
 
 
 #Initialize-Image -Verbose -Qcow2ImagePath $qcow2source -ImageName $imageName -OpenStackKeyName $osKeyName -OpenStackSecurityGroup $osSecurityGroup -OpenStackNetworkId $osNetworkId -OpenStackFlavor $osFlavor
