@@ -405,7 +405,7 @@ function create_vfd()
 		[ ! -d /Volumes/${floppyname}/profiles ] && run 3 mkdir -p /Volumes/${floppyname}/profiles
 		copy_profiles_to_floppy /Volumes/${floppyname}/profiles/
 
-		# create a csv file containing the drive letters for thel isos
+		# create a csv file containing the drive letters for the isos
 		info 3 "Mapping ISOs to drive letters"
 		map_drive_letters D E F G H >/Volumes/${floppyname}/driveletters.csv
 

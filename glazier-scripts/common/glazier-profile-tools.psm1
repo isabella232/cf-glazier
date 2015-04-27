@@ -48,7 +48,6 @@ function Download-GlazierProfileResources{[CmdletBinding()]param($glazierProfile
 }
 
 function Get-Profiles{[CmdletBinding()]param()
-  echo "These are the available profiles:"
-  Get-ChildItem A:\profiles | ?{ $_.PSIsContainer} | Select-Object Name
+  (Get-ChildItem A:\profiles | ?{ $_.PSIsContainer} | Select -ExpandProperty Name) -join ", "
 }
 
