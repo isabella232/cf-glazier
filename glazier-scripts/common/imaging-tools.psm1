@@ -305,3 +305,38 @@ function Add-UnattendXml{[CmdletBinding()]param($vhdMountLetter, $productKey)
     throw "Error while trying to configure unattend file in vhd mounted at '${vhdMountLetter}:\': ${exceptionMessage}"
   }
 }
+
+function Create-SetProxyScript{[CmdletBinding()]param($vhdMountLetter, $proxy)
+  if($proxy -eq $null)
+  {
+    return
+  }
+  try
+  {
+    $destinationFile = "${vhdMountLetter}:\glazier\winupdate_proxy.ps1"
+	$script = @"
+param( 
+  [switch] `$Remove
+)
+
+if (`$Remove)
+{
+  netsh winhttp reset proxy
+}
+else
+{
+  netsh winhttp set proxy ${proxy}
+}
+Stop-Service wuauserv
+Start-Service wuauserv
+"@
+
+    $script | Out-File -Encoding ascii $destinationFile
+  }
+  catch
+  {
+    Write-Verbose $_.Exception
+    $exceptionMessage = $_.Exception.Message
+    throw "Error while trying to create winupdate_proxy.ps1 script in vhd mounted at '${vhdMountLetter}:\glazier\': ${exceptionMessage}"
+  }
+}

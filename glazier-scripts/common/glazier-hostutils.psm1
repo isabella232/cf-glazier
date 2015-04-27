@@ -4,7 +4,7 @@ function Get-HostArg{[CmdletBinding()]param($argName)
 
   if ($fileExist -eq $True)
   {
-    $arg = Import-csv A:\args.csv -Header @("name","value") | Where-Object {$_.type -eq $argName}
+    $arg = Import-csv A:\args.csv -Header @("name","value") | Where-Object {$_.name -eq $argName}
     return $arg.value
   }
   else
@@ -79,7 +79,21 @@ function Get-ProductKey{[CmdletBinding()]param()
 
   if ($fileExist -eq $True)
   {
-    $arg = Import-csv A:\args.csv -Header @("name","value") | Where-Object {$_.type -eq "product-key"}
+    $arg = Import-csv A:\args.csv -Header @("name","value") | Where-Object {$_.name -eq "product-key"}
+    return $arg.value
+  }
+  else
+  {
+    return ''
+  }
+}
+
+function Get-WindowsUpdateProxy{[CmdletBinding()]param()
+  $fileExist = Test-Path A:\args.csv
+
+  if ($fileExist -eq $True)
+  {
+    $arg = Import-csv A:\args.csv -Header @("name","value") | Where-Object {$_.name -eq "windows-update-proxy"}
     return $arg.value
   }
   else

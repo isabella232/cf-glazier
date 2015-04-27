@@ -19,7 +19,19 @@ try
 
   Import-Module "$resourcesDir\PSWindowsUpdate"
 
+  $updateProxyScript = "$resourcesDir\winupdate_proxy.ps1"
+  $proxyExists = Test-Path $updateProxyScript
+
+  if($proxyExists)
+  {
+    & $updateProxyScript
+  }
   Get-WUInstall -AcceptAll -IgnoreReboot -IgnoreUserInput -NotCategory "Language packs"
+  if($proxyExists)
+  {
+    & $updateProxyScript -Remove
+  }
+
   if (Get-WURebootStatus -Silent)
   {
     $needsReboot = $true

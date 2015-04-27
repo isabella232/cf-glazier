@@ -29,6 +29,8 @@ function New-Image {
       Clean up created files after task is finished
   .PARAMETER ProductKey
       Windows product key
+  .PARAMETER Proxy
+      Proxy address used inside VM for Windows Updates
   .NOTES
       Author: Hewlett-Packard Development Company
       Date:   April 8, 2015
@@ -46,7 +48,8 @@ function New-Image {
     [int]$SizeInMB=25000,
     [string]$Workspace='c:\workspace',
     [switch]$CleanupWhenDone=$true,
-    [string]$ProductKey=''
+    [string]$ProductKey='',
+    [string]$Proxy=''
   )
 
   $isVerbose = [bool]$PSBoundParameters["Verbose"]
@@ -77,9 +80,14 @@ function New-Image {
     $ProductKey = Get-ProductKey
   }
 
-    if ([string]::IsNullOrWhitespace($ProductKey))
+  if ([string]::IsNullOrWhitespace($ProductKey))
   {
     $ProductKey = Read-Host "Windows Product Key"
+  }
+
+  if ([string]::IsNullOrWhitespace($Proxy))
+  {
+    $Proxy = Get-WindowsUpdateProxy
   }
 
   if ([string]::IsNullOrWhitespace($GlazierProfilePath))
@@ -146,6 +154,12 @@ function New-Image {
 
     Write-Output 'Setting up tools for the unattended install ...'
     Add-UnattendScripts $vhdMountLetter
+
+    if([String]::IsNullOrWhiteSpace($Proxy) -eq $false)
+    {
+        Write-Output 'Generating winupdate_proxy script ...'
+        Create-SetProxyScript $vhdMountLetter $Proxy
+    }
 
     Write-Output 'Adding glazier profile to image ...'
     Add-GlazierProfile $vhdMountLetter $glazierProfile
