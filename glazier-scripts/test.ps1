@@ -31,13 +31,11 @@ if (!(Verify-PythonClientsInstallation))
 # ************************************************************
 
 
-$name = 'windea'
-$glazierProfile = 'c:\users\stackato\code\cf-glazier-profiles\windea'
+$name = 'mssql2014'
+$glazierProfile = "c:\users\stackato\code\cf-glazier-profiles\${name}"
 $windowsISOMountPath="d:\"
 $virtIOPath="c:\assets\virtio"
 $workspace = "c:\workspace"
-
-New-Image -Name $name -GlazierProfile $glazierProfile -WindowsISOMountPath $WindowsISOMountPath -VirtIOPath $virtIOPath -Verbose -Workspace $workspace
 
 # ************************************************************
 # ****************************** STEP3 - CREATE IMAGE
@@ -51,15 +49,16 @@ $env:OS_USERNAME = "vlad"
 $env:OS_TENANT_NAME = "vlad"
 $env:OS_CACERT = "c:\assets\os_cacert.pem"
 
-$imageName = "windea"
-$qcow2source = "c:\workspace\mssql201220150426114307.qcow2"
+#$imageName = $name
+$qcow2source = "c:\workspace\mssql201220150428090431.qcow2"
 $osKeyName = "vlad-key"
 $osSecurityGroup = "default"
 $osNetworkId = "e8871d2b-da09-4ece-8785-530da230c6b8"
 $osFlavor = "m1.medium"
 
-
 #Initialize-Image -Verbose -Qcow2ImagePath $qcow2source -ImageName $imageName -OpenStackKeyName $osKeyName -OpenStackSecurityGroup $osSecurityGroup -OpenStackNetworkId $osNetworkId -OpenStackFlavor $osFlavor
+
+New-Image -Name $name -GlazierProfile $glazierProfile -WindowsISOMountPath $WindowsISOMountPath -VirtIOPath $virtIOPath -Verbose -Workspace $workspace -OpenStackKeyName $osKeyName -OpenStackSecurityGroup $osSecurityGroup -OpenStackNetworkId $osNetworkId -OpenStackFlavor $osFlavor
 
 
 # ************************************************************

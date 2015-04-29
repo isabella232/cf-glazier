@@ -49,7 +49,12 @@ function New-Image {
     [string]$Workspace='c:\workspace',
     [switch]$CleanupWhenDone=$true,
     [string]$ProductKey='',
-    [string]$Proxy=''
+    [string]$Proxy='',
+    [switch]$SkipInitializeStep=$false,
+    [string]$OpenStackKeyName,
+    [string]$OpenStackSecurityGroup,
+    [string]$OpenStackNetworkId,
+    [string]$OpenStackFlavor
   )
 
   $isVerbose = [bool]$PSBoundParameters["Verbose"]
@@ -203,6 +208,9 @@ function New-Image {
       $errorMessage = $_.Exception.Message
       Write-Warning "Failed to dismount vhd (it must have already happened): ${errorMessage}"
     }
+
+    # If there was an error, we don't want to proceed with the initialize step
+    $SkipInitializeStep = $true
   }
   finally
   {
@@ -211,6 +219,11 @@ function New-Image {
       Write-Output 'Cleaning up work directory ...'
       rm -Recurse -Force -Confirm:$false $workDir -ErrorAction SilentlyContinue
     }
+  }
+
+  if ($SkipInitializeStep -eq $false)
+  {
+    Initialize-Image -Qcow2ImagePath $qcow2FileName -ImageName $Name -OpenStackKeyName $OpenStackKeyName -OpenStackSecurityGroup $OpenStackSecurityGroup -OpenStackNetworkId $OpenStackNetworkId -OpenStackFlavor $OpenStackFlavor
   }
 }
 

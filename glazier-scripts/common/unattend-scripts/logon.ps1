@@ -26,7 +26,9 @@ try
   {
     & $updateProxyScript
   }
+
   Get-WUInstall -AcceptAll -IgnoreReboot -IgnoreUserInput -NotCategory "Language packs"
+
   if($proxyExists)
   {
     & $updateProxyScript -Remove
