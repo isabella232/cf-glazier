@@ -38,7 +38,7 @@ Available options:
 						  Can be used multiple times
 --vm-path PATH					- (optional) path to a directory where VBox files will
 						  be saved. The default is ~/.glazier. Make sure to have at least 100GB free
---product-key KEY				- (required) Windows product key
+--product-key KEY				- (optional) Windows product key; leave empty if you're using a VL Windows iso with a KMS server
 --os-network-id NETWORK_ID			- (required) OpenStack network id
 --os-key-name KEY_NAME				- (required) OpenStack key name
 --os-security-group SECURITY_GROUP		- (required) OpenStack security group
@@ -97,10 +97,10 @@ function set_colors()
 	fi
 }
 
-function check_os() 
+function check_os()
 {
 	auth_request "tenantId" $OS_TENANT_ID
-	auth_request "tenantName" $OS_TENANT_NAME 
+	auth_request "tenantName" $OS_TENANT_NAME
 }
 
 #verifies if provided OpenStack credentials are valid
@@ -121,7 +121,7 @@ function auth_request()
 	local curl_verbosity=""
 	if [ $verbosity -lt 3 ];
 	then
-		curl_verbosity='-sS' 
+		curl_verbosity='-sS'
 	fi
 
 	local ignnore_ssl=""
@@ -625,12 +625,12 @@ function validate_prerequisites()
 		info 3 "Found virtio image in : ${virtio_iso}"
 	fi
 
-	# check if productkey is not empty
-	info 3 "Checking Windows product key"
+	# check if productkey is empty
+	info 2 "Checking Windows product key"
 	if [ -z "$productkey" ];
 	then
-		error 1 "Missing Windows product key"
-		exit 1
+		info 2 "Missing Windows product key, assuming you're using a VL Windows iso with a KMS server."
+		productKey=""
 	fi
 
 	# check if virtualbox's directory exists
@@ -898,7 +898,7 @@ function validate_virtualbox()
 		error 1 "You have an unsupported version of virtualbox installed ("${vbversion}"). Supported versions are 4.3.x. Do you want to continue (type 'yes' to continue) ?"
 		echo -n "Your answer:"
 		read answer
-		
+
 		if [ "$answer" == "yes" ];
 		then
 			info 1 "Going on with an unsupported version of virtualbox. Things might not work as expected."
@@ -1142,4 +1142,3 @@ run_virtualbox
 # remove temporary directory
 info 3 "Remove temporary directory"
 run 3 rm -rf "${tmpdir}"
-
