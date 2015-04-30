@@ -53,10 +53,7 @@
         </OSImage>
       </ImageInstall>
       <UserData>
-        <ProductKey>
-          <Key>PRODUCT-KEY-DO-NOT-CHANGE-THIS-LINE</Key>
-          <WillShowUI>OnError</WillShowUI>
-        </ProductKey>
+        <ProductKey><Key>PRODUCT-KEY-DO-NOT-CHANGE-THIS-LINE</Key><WillShowUI>OnError</WillShowUI></ProductKey>
         <AcceptEula>true</AcceptEula>
       </UserData>
     </component>
