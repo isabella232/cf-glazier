@@ -130,8 +130,6 @@ function Upload-SwiftNative{[CmdletBinding()]param($localFile, $container, $obje
 
   Write-Output "Will be uploading ${chunkCount} chunks."
 
-  $sw = [System.Diagnostics.Stopwatch]::StartNew()
-
   # Iterate through chunks
   for ($idx = 0; $idx -lt $completeChunkCount; $idx++)
   {
@@ -141,16 +139,10 @@ function Upload-SwiftNative{[CmdletBinding()]param($localFile, $container, $obje
     # Resolve out upload url
     $uploadUrl = Get-ChunkUrl $swiftUrl $segmentContainer $prefix $idx
 
-    if ($sw.Elapsed.TotalMilliseconds -ge 500)
-    {
-      $activity = "Uploading object to swift ..."
-      $status = "Uploading segment #$($idx + 1) of ${chunkCount}"
-      $percentComplete = ($idx / $chunkCount)  * 100
-      Write-Progress -Id 1 -activity $activity -status $status -PercentComplete $percentComplete
-
-      $sw.Reset()
-      $sw.Start()
-    }
+    $activity = "Uploading object to swift ..."
+    $status = "Uploading segment #$($idx + 1) of ${chunkCount}"
+    $percentComplete = ($idx / $chunkCount)  * 100
+    Write-Progress -Id 1 -activity $activity -status $status -PercentComplete $percentComplete
 
     # Upload chunk
     Upload-ChunkWithRetries $localFile $uploadUrl $token $offset $chunkSizeBytes $retryCount $withChaos
@@ -307,11 +299,13 @@ function Upload-Chunk{[CmdletBinding()]param($localFile, $remoteUrl, $token, $of
     $reader.Seek($offset, "Begin") | Out-Null
 
     $request = [System.Net.HttpWebRequest]::Create($remoteUrl)
+    $request.AllowWriteStreamBuffering = $false
+    $request.ContentLength = $chunkSize
     $request.Headers.Add("X-Auth-Token", $token)
     $request.Method = "PUT"
     $requestStream = $request.GetRequestStream()
 
-    $sw = [System.Diagnostics.Stopwatch]::StartNew()
+    $swChild = [System.Diagnostics.Stopwatch]::StartNew()
 
     while ($bytesRemaining -gt 0)
     {
@@ -320,16 +314,16 @@ function Upload-Chunk{[CmdletBinding()]param($localFile, $remoteUrl, $token, $of
       $bytesRemaining -= $readCount
       $requestStream.Write($buffer, 0, $readCount)
 
-      if ($sw.Elapsed.TotalMilliseconds -ge 500)
+      if ($swChild.Elapsed.TotalMilliseconds -ge 100)
       {
-        $activity = "Segment uploading ..."
+        $activity = "Uploading segment with offset ${offset} ..."
         $doneBytes = $chunkSize - $bytesRemaining
         $status = "Uploaded (${doneBytes} bytes of (${chunkSize}) bytes: "
         $percentComplete = ($doneBytes / $chunkSize)  * 100
-        Write-Progress -Id 2 -activity $activity -status $status -PercentComplete $percentComplete
+        Write-Progress -Id 2 -ParentId 1 -activity $activity -status $status -PercentComplete $percentComplete
 
-        $sw.Reset()
-        $sw.Start()
+        $swChild.Reset()
+        $swChild.Start()
       }
 
       if ($withChaos)
@@ -341,7 +335,7 @@ function Upload-Chunk{[CmdletBinding()]param($localFile, $remoteUrl, $token, $of
       }
     }
 
-    Write-Progress -Id 2 -activity "Segment uploading ..." -status "Done"
+    Write-Progress -Id 2 -ParentId 1 -activity "Uploading segment with offset ${offset} ..." -status "Done" -PercentComplete 100
   }
   finally
   {
