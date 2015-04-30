@@ -6,6 +6,7 @@ Import-Module -DisableNameChecking (Join-Path $currentDir './common/openstack-to
 Import-Module -DisableNameChecking (Join-Path $currentDir './common/qemu-img-tools.psm1')
 Import-Module -DisableNameChecking (Join-Path $currentDir './common/imaging-tools.psm1')
 Import-Module -DisableNameChecking (Join-Path $currentDir './common/glazier-hostutils.psm1')
+Import-Module -DisableNameChecking (Join-Path $currentDir './common/native-swift.psm1')
 
 function New-Image {
   <#
@@ -339,7 +340,7 @@ function Initialize-Image {
       Create-SwiftContainer $OpenStackSwiftContainer
 
       Write-Output "Detected an object store, uploading image to swift ..."
-      Upload-Swift $Qcow2ImagePath $OpenStackSwiftContainer $tempImageName
+      Upload-SwiftNative $Qcow2ImagePath $OpenStackSwiftContainer $tempImageName (1024 * 1024 * 100) 5 $false
 
       Write-Output "Creating temporary image ..."
       Create-ImageFromSwift $tempImageName $OpenStackSwiftContainer $tempImageName
