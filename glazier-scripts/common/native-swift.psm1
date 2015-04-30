@@ -168,6 +168,8 @@ function Upload-SwiftNative{[CmdletBinding()]param($localFile, $container, $obje
     Upload-ChunkWithRetries $localFile $uploadUrl $token $offset $lastChunkSizeBytes $retryCount $withChaos
   }
 
+  Write-Progress -Id 1 -activity "Uploading object to swift ..." -status "Done" -PercentComplete 100
+
   # Create manifest
   $manifestUrl = Get-ManifestUrl $swiftUrl $container $object
   Create-ManifestWithRetries $manifestUrl $token $container $segmentContainer $object $prefix $retryCount $withChaos
