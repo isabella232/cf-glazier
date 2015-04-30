@@ -114,7 +114,17 @@ This is specified in autounattend.xml, at the end of the file, in a RunSynchrono
 - `--virtio-iso` - required - path to a virtio iso file
 - `--profile` - optional - path to a `glazier profile`; the directory needs to have the correct structure; this parameter can be specified multiple times; all the specified profiles will be part of the `builder.iso` and made available to `new-image` in the `glazier vm`
 - `--vm-path` - optional - path to a directory where VBox files will be saved; by default, the files will be saved to ~/.glazier
-- `--product-key` - required - windows product key used to activate the `glazier vm`
+- `--product-key` - optional - windows product key used to activate the `glazier vm`. Leave empty if you're using a VL Windows ISO with a KMS server
+
+    The following combinations of Windows ISOs and product keys `will` work :
+- Retail Windows ISO with valid key
+- VL Windows ISO with valid key
+- VL Windows ISO without key
+
+    The following combinations of Windows ISOs and product keys  `will not` work
+- Retail Windows ISO with invalid key
+- Retail Windows ISO without key
+- VL Windows ISO with invalid key
 
 ##New-Image
 
