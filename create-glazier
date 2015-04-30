@@ -419,10 +419,10 @@ function create_vfd()
 		# put the product key in autounattend.xml
 		if [ -z "${productkey}" ];
 		then
-			info 3 "No product key specified, removing references from autounattend.xml"
+			info 1 "No product key specified, assuming you're using a Volume License Windows ISO and a KMS Server"
 			cat ${glazierpath}/${assetsdir}/autounattend.xml | grep -v ProductKey >${tmpdir}/autounattend.xml
 		else
-			info 3 "Product key specified, using it in autounattend.xml"
+			info 1 "Product key specified, using it in autounattend.xml"
 			cat ${glazierpath}/${assetsdir}/autounattend.xml | sed s/PRODUCT-KEY-DO-NOT-CHANGE-THIS-LINE/${productkey}/g >${tmpdir}/autounattend.xml
 		fi
 		run 2 mv -f ${tmpdir}/autounattend.xml ${vmpath}/floppy/autounattend.xml
@@ -488,10 +488,10 @@ function create_vfd()
 		# put the product key in autounattend.xml
 		if [ -z "${productkey}" ];
 		then
-			info 3 "No product key specified, removing references from autounattend.xml"
+			info 1 "No product key specified, assuming you're using a Volume License Windows ISO and a KMS Server"
 			cat ${glazierpath}/${assetsdir}/autounattend.xml | grep -v ProductKey >${tmpdir}/autounattend.xml
 		else
-			info 3 "Product key specified, using it in autounattend.xml"
+			info 1 "Product key specified, using it in autounattend.xml"
 			cat ${glazierpath}/${assetsdir}/autounattend.xml | sed s/PRODUCT-KEY-DO-NOT-CHANGE-THIS-LINE/${productkey}/g >${tmpdir}/autounattend.xml
 		fi
 		run 2 mv -f ${tmpdir}/autounattend.xml /Volumes/${floppyname}/autounattend.xml
