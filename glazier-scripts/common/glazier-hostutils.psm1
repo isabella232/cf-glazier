@@ -14,6 +14,8 @@ function Get-HostArg{[CmdletBinding()]param($argName)
 }
 
 function Set-OpenStackVars{[CmdletBinding()]param()
+  $fileExist = Test-Path A:\args.csv
+
   # load openrc info
   if ($fileExist -eq $True)
   {
