@@ -95,3 +95,22 @@ function Import-509Certificate{[CmdletBinding()]param($certPath, $certRootStore,
     Write-Output "Could not import certificate '${certPath}': ${errorMessage}"
   }
 }
+
+function Configure-SSLErrors{[CmdletBinding()]param()
+  If ( $env:OS_INSECURE -match "true" )
+  {
+    add-type @"
+      using System.Net;
+      using System.Security.Cryptography.X509Certificates;
+      public class TrustAllCertsPolicy : ICertificatePolicy {
+          public bool CheckValidationResult(
+              ServicePoint srvPoint, X509Certificate certificate,
+              WebRequest request, int certificateProblem) {
+              return true;
+          }
+      }
+"@
+
+    [System.Net.ServicePointManager]::CertificatePolicy = New-Object TrustAllCertsPolicy
+  }
+}
