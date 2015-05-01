@@ -340,7 +340,7 @@ function Initialize-Image {
       Create-SwiftContainer $OpenStackSwiftContainer
 
       Write-Output "Detected an object store, uploading image to swift ..."
-      Upload-SwiftNative $Qcow2ImagePath $OpenStackSwiftContainer $tempImageName (1024 * 1024 * 50) 5 $false
+      Upload-SwiftNative $Qcow2ImagePath $OpenStackSwiftContainer $tempImageName (1024 * 1024 * 50) 10 $false
 
       Write-Output "Creating temporary image ..."
       Create-ImageFromSwift $tempImageName $OpenStackSwiftContainer $tempImageName

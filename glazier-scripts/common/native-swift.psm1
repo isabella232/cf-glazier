@@ -197,6 +197,7 @@ function Create-ManifestWithRetries{[CmdletBinding()]param($remoteUrl, $token, $
       $remainingRetryCount -= 1
       Write-Warning "Manifest was not created ok, trying again (retries remaining: ${remainingRetryCount}) ..."
       Write-Verbose "${errorMessage}"
+      Start-Sleep -Seconds 10
     }
   }
 
@@ -282,6 +283,7 @@ function Upload-ChunkWithRetries{[CmdletBinding()]param($localFile, $remoteUrl, 
       $remainingRetryCount -= 1
       Write-Warning "Chunk #${idx} did not upload ok, trying again (retries remaining: ${remainingRetryCount}) ..."
       Write-Verbose "${errorMessage}"
+      Start-Sleep -Seconds 10
     }
   }
 
