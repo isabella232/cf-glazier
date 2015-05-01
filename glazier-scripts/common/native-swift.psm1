@@ -18,6 +18,8 @@ function Get-SwiftUrl{[CmdletBinding()]param()
       Import-509Certificate $env:OS_CACERT 'LocalMachine' 'Root'
     }
 
+    Configure-SSLErrors
+
     $url = "${env:OS_AUTH_URL}/tokens"
     $body = "{`"auth`":{`"passwordCredentials`":{`"username`": `"${env:OS_USERNAME}`",`"password`": `"${env:OS_PASSWORD}`"},`"tenantId`": `"${env:OS_TENANT_ID}`"}}"
     $headers = @{"Content-Type"="application/json"}
@@ -63,6 +65,8 @@ function Get-Token{[CmdletBinding()]param()
     {
       Import-509Certificate $env:OS_CACERT 'LocalMachine' 'Root'
     }
+
+    Configure-SSLErrors
 
     $url = "${env:OS_AUTH_URL}/tokens"
     $body = "{`"auth`":{`"passwordCredentials`":{`"username`": `"${env:OS_USERNAME}`",`"password`": `"${env:OS_PASSWORD}`"},`"tenantId`": `"${env:OS_TENANT_ID}`"}}"
@@ -301,6 +305,10 @@ function Upload-Chunk{[CmdletBinding()]param($localFile, $remoteUrl, $token, $of
     $reader.Seek($offset, "Begin") | Out-Null
 
     $request = [System.Net.HttpWebRequest]::Create($remoteUrl)
+    $request.ReadWriteTimeout = 1000 * 60 * 30
+    $request.Timeout = 1000 * 60 * 30
+    $request.KeepAlive = $false
+
     $request.AllowWriteStreamBuffering = $false
     $request.ContentLength = $chunkSize
     $request.Headers.Add("X-Auth-Token", $token)

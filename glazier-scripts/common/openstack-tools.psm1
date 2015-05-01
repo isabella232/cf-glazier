@@ -300,6 +300,8 @@ function Validate-SwiftExistence{[CmdletBinding()]param()
       Import-509Certificate $env:OS_CACERT 'LocalMachine' 'Root'
     }
 
+    Configure-SSLErrors
+
     $url = "${env:OS_AUTH_URL}/tokens"
     $body = "{`"auth`":{`"passwordCredentials`":{`"username`": `"${env:OS_USERNAME}`",`"password`": `"${env:OS_PASSWORD}`"},`"tenantId`": `"${env:OS_TENANT_ID}`"}}"
     $headers = @{"Content-Type"="application/json"}
