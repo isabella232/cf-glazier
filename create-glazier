@@ -646,14 +646,21 @@ function validate_prerequisites()
 		info 3 "Found virtio image in : ${virtio_iso}"
 	fi
 
-	# check if productkey is empty
+	# check if --product-key and --use-volume-license are both specified
 	info 2 "Checking Windows product key"
+	if [ ! -z "$productkey" -a "$volumelicense" == "true" ];
+	then
+		error 1 "Both --product-key and --use-volume-license specified. Exiting..."
+		exit 1
+	fi
+
+	# check if productkey is empty
 	if [ -z "$productkey" ];
 	then
 		if [ "$volumelicense" == "true" ];
 		then
 			info 1 "No Windows product key, but --use-volume-license specified. Assuming you're using a VL Windows iso with a KMS server."
-			productKey=""
+			productkey=""
 		else
 			error 1 "No product-key specified (and no --use-volume-license). Exiting..."
 			exit 1
