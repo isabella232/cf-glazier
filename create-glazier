@@ -21,6 +21,7 @@ os_security_group=""
 os_flavor=""
 whoami=`id -u`
 insecure="false"
+volumelicense="false"
 glazierpath=`dirname $0`
 glazier_version=`cat ${glazierpath}/.glazier_version`
 
@@ -39,12 +40,13 @@ Available options:
 --vm-path PATH					- (optional) path to a directory where VBox files will
 						  be saved. The default is ~/.glazier. Make sure to have at least 100GB free
 --product-key KEY				- (optional) Windows product key; leave empty if you're using a VL Windows iso with a KMS server
+--use-volume-license				- (optional) if this is specified, there's no need to specify --product-key (means you are using Windows VL)
 --os-network-id NETWORK_ID			- (required) OpenStack network id
 --os-key-name KEY_NAME				- (required) OpenStack key name
 --os-security-group SECURITY_GROUP		- (required) OpenStack security group
 --os-flavor FLAVOR				- (required) OpenStack flavor
 --insecure					- (optional) create a Windows image for a HDP that doesen't have an https certificate
---windows-update-proxy					- (optional) proxy used for Windows Updates on image
+--windows-update-proxy				- (optional) proxy used for Windows Updates on image
 --dry-run					- (optional) run but don't make any changes
 --verbosity verbosity_level			- (optional) verbosity level is an interger between 1-3, with 1
 						  being the least verbose and 3 being the most verbose
@@ -306,6 +308,12 @@ function parse_parameters()
 			shift
 			info 3 "Got product key"
 			echo product-key,${productkey} >>${tmpdir}/args.csv
+			;;
+		"--use-volume-license")
+			shift
+			volumelicense="true"
+			info 3 "Got volume license flag"
+			echo "use-volume-license,true" >>${tmpdir}/args.csv
 			;;
 		"--version")
 			echo ${glazier_version}
@@ -638,12 +646,25 @@ function validate_prerequisites()
 		info 3 "Found virtio image in : ${virtio_iso}"
 	fi
 
-	# check if productkey is empty
+	# check if --product-key and --use-volume-license are both specified
 	info 2 "Checking Windows product key"
+	if [ ! -z "$productkey" -a "$volumelicense" == "true" ];
+	then
+		error 1 "Both --product-key and --use-volume-license specified. Exiting..."
+		exit 1
+	fi
+
+	# check if productkey is empty
 	if [ -z "$productkey" ];
 	then
-		info 2 "Missing Windows product key, assuming you're using a VL Windows iso with a KMS server."
-		productKey=""
+		if [ "$volumelicense" == "true" ];
+		then
+			info 1 "No Windows product key, but --use-volume-license specified. Assuming you're using a VL Windows iso with a KMS server."
+			productkey=""
+		else
+			error 1 "No product-key specified (and no --use-volume-license). Exiting..."
+			exit 1
+		fi
 	fi
 
 	# check if virtualbox's directory exists
