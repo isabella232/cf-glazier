@@ -525,12 +525,12 @@ function create_vfd()
 function validate_net_connectivity()
 {
 	info 2 "Checking Internet connectivity..."
-	info 3 "Pinging 8.8.8.8"
+	info 3 "Doing a DNS query for hpcloud.net"
 
-	ping -c 3 8.8.8.8 1>/dev/null 2>/dev/null
-	local ping_retcode=$?
+	host hpcloud.net 1>/dev/null 2>/dev/null
+	local retcode=$?
 
-	if [ ${ping_retcode} -eq 0 ];
+	if [ ${retcode} -eq 0 ];
 	then
 		info 3 "We are online"
 	else
