@@ -114,3 +114,119 @@ function Configure-SSLErrors{[CmdletBinding()]param()
     [System.Net.ServicePointManager]::CertificatePolicy = New-Object TrustAllCertsPolicy
   }
 }
+ 
+function Get-HttpsProxy {
+    return "ion.ion"
+}
+
+function Get-HttpProxy {
+    return "http://google.com"
+}
+
+function Set-SystemProxy{[CmdletBinding()]param()
+  Write-Verbose "Setting system proxy ..."
+  $httpProxy = Get-HttpProxy
+  $httpsProxy = Get-HttpsProxy
+  $httpProxyObj = $null
+  $httpsProxyObj = $null
+
+  $Source = @" 
+using System;
+using System.Net;
+
+namespace Proxy
+{
+    public class SimpleProxy : IWebProxy
+    {
+        private readonly Uri httpProxyUrl;
+        private readonly Uri httpsProxyUrl;
+
+        public SimpleProxy(Uri httpProxyUrl, Uri httpsProxyUrl)
+        {
+            this.httpProxyUrl = httpProxyUrl;
+            this.httpsProxyUrl = httpsProxyUrl;
+        }
+
+        public Uri GetProxy(Uri destination)
+        {
+            if (destination.Scheme == "https" && this.httpsProxyUrl != null)
+            {
+                return this.httpsProxyUrl;
+            }
+            else
+            {
+                return this.httpProxyUrl;
+            }
+        }
+
+        public bool IsBypassed(Uri host)
+        {
+            if (httpsProxyUrl == null && httpsProxyUrl == null)
+            {
+                return true;
+            }
+            return false;
+        }
+
+        public ICredentials Credentials
+        {
+            get;
+            set;
+        }
+    }
+}
+
+"@ 
+  
+  Add-Type -TypeDefinition $Source -Language CSharp
+  
+
+  if (![string]::IsNullOrWhitespace($httpProxy)) {
+     try 
+     {
+        Write-Verbose "Trying to set HTTP proxy to $httpProxy" 
+        $httpProxyObj = New-Object System.Uri -ArgumentList $httpProxy
+
+        & "${env:windir}\system32\setx.exe" /m HTTP_PROXY $httpProxy
+        & "${env:windir}\system32\setx.exe" /m http_proxy $httpProxy
+	
+	    & "${env:windir}\syswow64\setx.exe" /m HTTP_PROXY $httpProxy
+        & "${env:windir}\syswow64\setx.exe" /m http_proxy $httpProxy
+    }
+    Catch 
+    {
+       Write-Verbose $_.Exception
+    }
+
+  }
+  
+  if (![string]::IsNullOrWhitespace($httpsProxy)) {
+     try 
+     {
+     Write-Verbose "Trying to set HTTPS proxy to $httpsProxy" 
+       $httpsProxyObj = New-Object System.Uri -ArgumentList $httpsProxy
+
+    & "${env:windir}\system32\setx.exe" /m HTTPS_PROXY $httpsProxy
+    & "${env:windir}\system32\setx.exe" /m https_proxy $httpsProxy
+	
+    & "${env:windir}\syswow64\setx.exe" /m HTTPS_PROXY $httpsProxy
+    & "${env:windir}\syswow64\setx.exe" /m https_proxy $httpsProxy
+    }
+    Catch 
+    {
+      Write-Verbose $_.Exception
+    }
+  }
+
+  $proxy = New-Object Proxy.SimpleProxy -ArgumentList $httpProxyObj, $httpProxyObj
+  [System.Net.WebRequest]::DefaultWebProxy = $proxy
+
+  
+  if ((![string]::IsNullOrWhitespace($httpProxy)) -or (![string]::IsNullOrWhitespace($httpsProxy))) {
+    & "${env:windir}\system32\setx.exe" /m NO_PROXY 'localhost,127.0.0.1,localaddress,0.0.0.0/8,10.0.0.0/8,127.0.0.0/8,169.254.0.0/16,172.16.0.0/12,192.0.2.0/8,192.88.99.0/8,192.168.0.0/16,198.18.0.0/15,224.0.0.0/4,240.0.0.0/4'
+    & "${env:windir}\system32\setx.exe" /m no_proxy 'localhost,127.0.0.1,localaddress,0.0.0.0/8,10.0.0.0/8,127.0.0.0/8,169.254.0.0/16,172.16.0.0/12,192.0.2.0/8,192.88.99.0/8,192.168.0.0/16,198.18.0.0/15,224.0.0.0/4,240.0.0.0/4'
+
+    & "${env:windir}\syswow64\setx.exe" /m NO_PROXY 'localhost,127.0.0.1,localaddress,0.0.0.0/8,10.0.0.0/8,127.0.0.0/8,169.254.0.0/16,172.16.0.0/12,192.0.2.0/8,192.88.99.0/8,192.168.0.0/16,198.18.0.0/15,224.0.0.0/4,240.0.0.0/4'
+    & "${env:windir}\syswow64\setx.exe" /m no_proxy 'localhost,127.0.0.1,localaddress,0.0.0.0/8,10.0.0.0/8,127.0.0.0/8,169.254.0.0/16,172.16.0.0/12,192.0.2.0/8,192.88.99.0/8,192.168.0.0/16,198.18.0.0/15,224.0.0.0/4,240.0.0.0/4'
+  }
+}
