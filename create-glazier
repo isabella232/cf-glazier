@@ -24,7 +24,8 @@ insecure="false"
 volumelicense="false"
 glazierpath=`dirname $0`
 glazier_version=`cat ${glazierpath}/.glazier_version`
-
+vmhttpproxy=$HTTP_PROXY
+vmhttpsproxy=$HTTPS_PROXY
 
 # shows the users the script's syntax
 function show_help()
@@ -47,6 +48,8 @@ Available options:
 --os-flavor FLAVOR				- (required) OpenStack flavor
 --insecure					- (optional) create a Windows image for a HDP that doesen't have an https certificate
 --windows-update-proxy				- (optional) proxy used for Windows Updates on image
+--glazier-vm-http-proxy PROXY			- (optional) http proxy used for glazier Windows vm (if not specified, defaults to \$HTTP_PROXY env var)
+--glazier-vm-https-proxy PROXY			- (optional) https proxy used for glazier Windows vm (if not specified, defaults to \$HTTP_PROXY env var)
 --dry-run					- (optional) run but don't make any changes
 --verbosity verbosity_level			- (optional) verbosity level is an interger between 1-3, with 1
 						  being the least verbose and 3 being the most verbose
@@ -264,6 +267,18 @@ function parse_parameters()
 			info 3 "Got ${bldylw}windows-update-proxy${txtrst} = ${wu_proxy}"
 			echo windows-update-proxy,${wu_proxy} >>${tmpdir}/args.csv
 			;;
+		"--glazier-vm-http-proxy")
+			shift
+			vmhttpproxy=$1
+			shift
+			info 3 "Got ${bldylw}glazier-vm-http-proxy${txtrst} = ${vmhttpproxy}"
+			;;
+		"--glazier-vm-https-proxy")
+			shift
+			vmhttpsproxy=$1
+			shift
+			info 3 "Got ${bldylw}glazier-vm-https-proxy${txtrst} = ${vmhttpsproxy}"
+			;;
 		"--help"|"-h")
 			show_help
 			shift
@@ -397,6 +412,8 @@ function create_vfd()
 		# copying csv files
 		info 3 "Moving argument list csv file to the floppy"
 		echo "version,${glazier_version}" >>${tmpdir}/args.csv
+		[ ! -z "${vmhttpproxy}" ] && echo "glazier-vm-http-proxy,${vmhttpproxy}" >>${tmpdir}/args.csv
+		[ ! -z "${vmhttpsproxy}" ] && echo "glazier-vm-https-proxy,${vmhttpsproxy}" >>${tmpdir}/args.csv
 		run 3 sudo mv -f ${tmpdir}/args.csv ${vmpath}/floppy
 
 		# putting OS* env variables on the floppy
@@ -466,6 +483,8 @@ function create_vfd()
 		# copying csv files
 		info 3 "Moving argument list csv file to the floppy"
 		echo "version,${glazier_version}" >>${tmpdir}/args.csv
+		[ ! -z "${vmhttpproxy}" ] && echo "glazier-vm-http-proxy,${vmhttpproxy}" >>${tmpdir}/args.csv
+		[ ! -z "${vmhttpsproxy}" ] && echo "glazier-vm-https-proxy,${vmhttpsproxy}" >>${tmpdir}/args.csv
 		run 3 mv -f ${tmpdir}/args.csv /Volumes/${floppyname}/
 
 		# putting OS* env variables on the floppy
