@@ -550,3 +550,4 @@ function Validate-OSEnvVars{[CmdletBinding()]param()
   if ([string]::IsNullOrWhitespace($env:OS_USERNAME)) { throw 'OS_USERNAME missing!' }
   if ([string]::IsNullOrWhitespace($env:OS_TENANT_NAME)) { throw 'OS_TENANT_NAME missing!' }
 }
+

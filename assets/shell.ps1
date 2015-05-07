@@ -4,6 +4,9 @@ Import-Module -DisableNameChecking 'A:\common\qemu-img-tools.psm1'
 Import-Module -DisableNameChecking 'A:\common\openstack-tools.psm1'
 Import-Module -DisableNameChecking 'A:\common\glazier-hostutils.psm1'
 Import-Module -DisableNameChecking 'A:\common\glazier-profile-tools.psm1'
+Import-Module -DisableNameChecking 'A:\common\utils.psm1'
+
+Set-SystemProxy -Verbose
 
 if ((Verify-QemuImg) -eq $false)
 {
@@ -14,6 +17,7 @@ if (!(Verify-PythonClientsInstallation))
 {
   Install-PythonClients -Verbose
 }
+
 
 echo @"
 
