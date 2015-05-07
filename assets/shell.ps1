@@ -15,6 +15,8 @@ if (!(Verify-PythonClientsInstallation))
   Install-PythonClients -Verbose
 }
 
+Set-SystemProxy -Verbose
+
 echo @"
 
  To create a new qcow2 image with a profile loaded by 'create-glazier', run the following:

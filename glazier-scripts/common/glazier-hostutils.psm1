@@ -103,3 +103,31 @@ function Get-WindowsUpdateProxy{[CmdletBinding()]param()
     return ''
   }
 }
+
+function Get-HttpProxy{[CmdletBinding()]param()
+  $fileExist = Test-Path A:\args.csv
+
+  if ($fileExist -eq $True)
+  {
+    $arg = Import-csv A:\args.csv -Header @("name","value") | Where-Object {$_.name -eq "glazier-vm-http-proxy"}
+    return $arg.value
+  }
+  else
+  {
+    return ''
+  }
+}
+
+function Get-HttpsProxy{[CmdletBinding()]param()
+  $fileExist = Test-Path A:\args.csv
+
+  if ($fileExist -eq $True)
+  {
+    $arg = Import-csv A:\args.csv -Header @("name","value") | Where-Object {$_.name -eq "glazier-vm-https-proxy"}
+    return $arg.value
+  }
+  else
+  {
+    return ''
+  }
+}
