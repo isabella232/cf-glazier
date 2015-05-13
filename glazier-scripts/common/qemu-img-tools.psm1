@@ -15,7 +15,7 @@ function Install-QemuImg{[CmdletBinding()]param()
 
   $qemuZip = Join-Path $qemuDir 'qemu.zip'
   Write-Verbose "Downloading qemu ..."
-  Download-File $qemuUrl $qemuZip
+  Download-File-With-Retry $qemuUrl $qemuZip
 
   Write-Verbose "Extracting qemu ..."
   $fileSystemAssemblyPath = Join-Path ([System.Runtime.InteropServices.RuntimeEnvironment]::GetRuntimeDirectory()) 'System.IO.Compression.FileSystem.dll'

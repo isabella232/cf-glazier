@@ -39,42 +39,74 @@ function Convert-ImageNameToFileName{[CmdletBinding()]param($name)
   ($name -replace '[^a-zA-Z0-9\.]+', '-').ToLower()
 }
 
+function Download-File-With-Retry{[CmdletBinding()]param($url, $targetFile)
+  $retry_left = 5
+    while ($true) {
+      try {
+        Download-File $url $targetFile
+        break
+      }
+      catch {
+        if ($retry_left -lt 1) {
+          throw
+          } 
+          else {
+            $errorMessage = $_.Exception.Message
+            Write-Output "Call failed with exception: ${errorMessage}"
+            Write-Verbose $_.Exception
+            $retry_left = $retry_left - 1
+            Write-Output "Retries left: ${retry_left}"
+         }
+      }
+        
+  }
+}
+
+
 function Download-File{[CmdletBinding()]param($url, $targetFile)
   Write-Verbose "Downloading '${url}' to '${targetFile}'"
-  $uri = New-Object "System.Uri" "$url"
-  $request = [System.Net.HttpWebRequest]::Create($uri)
-  $request.set_Timeout(15000) #15 second timeout
-  $response = $request.GetResponse()
-  $totalLength = [System.Math]::Floor($response.get_ContentLength()/1024)
-  $responseStream = $response.GetResponseStream()
-  $targetStream = New-Object -TypeName System.IO.FileStream -ArgumentList $targetFile, Create
-  $buffer = new-object byte[] 50KB
-  $count = $responseStream.Read($buffer,0,$buffer.length)
-  $downloadedBytes = $count
-  $sw = [System.Diagnostics.Stopwatch]::StartNew()
+  try {
+    $uri = New-Object "System.Uri" "$url"
+    $request = [System.Net.HttpWebRequest]::Create($uri)
+    $request.set_Timeout(15000) #15 second timeout
+    $request.set_KeepAlive($false)
+    $response = $request.GetResponse()
+    $totalLength = [System.Math]::Floor($response.get_ContentLength()/1024)
+    $responseStream = $response.GetResponseStream()
+    $targetStream = New-Object -TypeName System.IO.FileStream -ArgumentList $targetFile, Create
+    $buffer = new-object byte[] 50KB
+    $count = $responseStream.Read($buffer,0,$buffer.length)
+    $downloadedBytes = $count
+    $sw = [System.Diagnostics.Stopwatch]::StartNew()
 
-  while ($count -gt 0)
-  {
-     $targetStream.Write($buffer, 0, $count)
-     $count = $responseStream.Read($buffer,0,$buffer.length)
-     $downloadedBytes = $downloadedBytes + $count
+    while ($count -gt 0) {
+      $targetStream.Write($buffer, 0, $count)
+      $count = $responseStream.Read($buffer,0,$buffer.length)
+      $downloadedBytes = $downloadedBytes + $count
 
-     if ($sw.Elapsed.TotalMilliseconds -ge 500) {
-       $activity = "Downloading file '$($url.split('/') | Select -Last 1)'"
-       $status = "Downloaded ($([System.Math]::Floor($downloadedBytes/1024))K of $($totalLength)K): "
-       $percentComplete = ((([System.Math]::Floor($downloadedBytes/1024)) / $totalLength)  * 100)
-       Write-Progress -activity $activity -status $status -PercentComplete $percentComplete
+      if ($sw.Elapsed.TotalMilliseconds -ge 500) {
+        $activity = "Downloading file '$($url.split('/') | Select -Last 1)'"
+        $status = "Downloaded ($([System.Math]::Floor($downloadedBytes/1024))K of $($totalLength)K): "
+        $percentComplete = ((([System.Math]::Floor($downloadedBytes/1024)) / $totalLength)  * 100)
+        Write-Progress -activity $activity -status $status -PercentComplete $percentComplete
 
-       $sw.Reset()
-       $sw.Start()
+        $sw.Reset()
+        $sw.Start()
+      }
+    }
+
+    Write-Progress -activity "Downloading file '$($url.split('/') | Select -Last 1)'" -status "Done"
+  }
+  finally {
+    if ($targetStream -ne $null) {
+      $targetStream.Flush()
+      $targetStream.Close()
+      $targetStream.Dispose()
+    }
+    if ($responseStream -ne $null) {
+      $responseStream.Dispose()
     }
   }
-
-  Write-Progress -activity "Downloading file '$($url.split('/') | Select -Last 1)'" -status "Done"
-  $targetStream.Flush()
-  $targetStream.Close()
-  $targetStream.Dispose()
-  $responseStream.Dispose()
 }
 
 function Import-509Certificate{[CmdletBinding()]param($certPath, $certRootStore, $certStore)
@@ -114,14 +146,6 @@ function Configure-SSLErrors{[CmdletBinding()]param()
     [System.Net.ServicePointManager]::CertificatePolicy = New-Object TrustAllCertsPolicy
   }
 }
- 
-function Get-HttpsProxy {
-    return "ion.ion"
-}
-
-function Get-HttpProxy {
-    return "http://google.com"
-}
 
 function Set-SystemProxy{[CmdletBinding()]param()
   Write-Verbose "Setting system proxy ..."
@@ -136,10 +160,10 @@ using System.Net;
 
 namespace Proxy
 {
-    public class SimpleProxy : IWebProxy
+   public class SimpleProxy : IWebProxy
     {
-        private readonly Uri httpProxyUrl;
-        private readonly Uri httpsProxyUrl;
+        private Uri httpProxyUrl = null;
+        private Uri httpsProxyUrl = null;
 
         public SimpleProxy(Uri httpProxyUrl, Uri httpsProxyUrl)
         {
@@ -161,7 +185,7 @@ namespace Proxy
 
         public bool IsBypassed(Uri host)
         {
-            if (httpsProxyUrl == null && httpsProxyUrl == null)
+            if (httpProxyUrl == null && httpsProxyUrl == null)
             {
                 return true;
             }
@@ -186,12 +210,7 @@ namespace Proxy
      {
         Write-Verbose "Trying to set HTTP proxy to $httpProxy" 
         $httpProxyObj = New-Object System.Uri -ArgumentList $httpProxy
-
-        & "${env:windir}\system32\setx.exe" /m HTTP_PROXY $httpProxy
-        & "${env:windir}\system32\setx.exe" /m http_proxy $httpProxy
-	
-	    & "${env:windir}\syswow64\setx.exe" /m HTTP_PROXY $httpProxy
-        & "${env:windir}\syswow64\setx.exe" /m http_proxy $httpProxy
+        $env:HTTP_PROXY=$httpProxy
     }
     Catch 
     {
@@ -205,12 +224,7 @@ namespace Proxy
      {
      Write-Verbose "Trying to set HTTPS proxy to $httpsProxy" 
        $httpsProxyObj = New-Object System.Uri -ArgumentList $httpsProxy
-
-    & "${env:windir}\system32\setx.exe" /m HTTPS_PROXY $httpsProxy
-    & "${env:windir}\system32\setx.exe" /m https_proxy $httpsProxy
-	
-    & "${env:windir}\syswow64\setx.exe" /m HTTPS_PROXY $httpsProxy
-    & "${env:windir}\syswow64\setx.exe" /m https_proxy $httpsProxy
+       $env:HTTPS_PROXY=$httpsProxy
     }
     Catch 
     {
@@ -218,7 +232,7 @@ namespace Proxy
     }
   }
 
-  $proxy = New-Object Proxy.SimpleProxy -ArgumentList $httpProxyObj, $httpProxyObj
+  $proxy = New-Object Proxy.SimpleProxy -ArgumentList $httpProxyObj, $httpsProxyObj
   [System.Net.WebRequest]::DefaultWebProxy = $proxy
 
   

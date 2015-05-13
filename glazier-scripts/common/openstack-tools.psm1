@@ -28,8 +28,6 @@ function Install-PythonClients{[CmdletBinding()]param()
     Write-Output "Installing Python clients"
     Install-VCRedist
     Install-Python
-    Install-EasyInstall
-    Install-Pip
     Install-NovaClient
     Install-GlanceClient
     Install-SwiftClient
@@ -39,6 +37,7 @@ function Install-PythonClients{[CmdletBinding()]param()
 function Check-VCRedist{[CmdletBinding()]param()
     return ((Get-ItemProperty HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\* | where DisplayName -like "*Visual C++ 2008*x64*") -ne $null)
 }
+
 
 function Install-VCRedist{[CmdletBinding()]param()
     if(Check-VCRedist)
@@ -52,7 +51,7 @@ function Install-VCRedist{[CmdletBinding()]param()
         $vcInstaller = Join-Path $env:temp "vcredist_x64.exe"
         Write-Output "Downloading VC Redistributable ..."
         $vcRedistUrl = Get-Dependency "vc-redist"
-        Download-File $vcRedistUrl $vcInstaller
+        Download-File-With-Retry $vcRedistUrl $vcInstaller
         $installProcess = Start-Process -Wait -PassThru -NoNewWindow $vcInstaller "/q /norestart"
         if (($installProcess.ExitCode -ne 0) -or !(Check-VCRedist))
         {
@@ -85,8 +84,10 @@ function Install-Python{[CmdletBinding()]param()
         Write-Output "Downloading Python ..."
         $pythonUrl = Get-Dependency "python"
         $pythonInstaller = Join-Path $env:temp "Python.msi"
-        Download-File $pythonUrl $pythonInstaller
+    
+        Download-File-With-Retry $pythonUrl $pythonInstaller -Verbose
         Write-Output "Installing Python ..."
+        $pythonInstaller = Join-Path $env:temp "Python.msi"
         $installProcess = Start-Process -Wait -PassThru -NoNewWindow msiexec "/quiet /i ${pythonInstaller} TARGETDIR=`"${pythonDir}`""
         if (($installProcess.ExitCode -ne 0) -or !(Check-Python))
         {
@@ -101,52 +102,6 @@ function Install-Python{[CmdletBinding()]param()
           Remove-Item $pythonInstaller -Force
         }
     }
-}
-
-function Check-EasyInstall{[CmdletBinding()]param()
-    return (Test-Path (Join-Path $pythonScriptDir "easy_install.exe"))
-}
-
-function Install-EasyInstall{[CmdletBinding()]param()
-    if(Check-EasyInstall)
-    {
-        Write-Output "EasyInstall already installed"
-        return
-    }
-
-    $env:Path = $env:Path + ";${pythonDir};${pythonScriptDir}"
-
-    Write-Output "Installing easy_install ..."
-
-    $easyInstallUrl = Get-Dependency "easy-install"
-
-    (Invoke-WebRequest $easyInstallUrl).Content | python -
-    if(!(Check-EasyInstall))
-    {
-        throw "EasyInstall installation failed"
-    }
-
-    Write-Output "Finished installing EasyInstall"
-}
-
-function Check-Pip{[CmdletBinding()]param()
-    return (Test-Path (Join-Path $pythonScriptDir "pip.exe"))
-}
-
-function Install-Pip{[CmdletBinding()]param()
-    if(Check-Pip)
-    {
-        Write-Output "Pip already installed"
-        return
-    }
-    Write-Output "Installing pip ..."
-    $installProcess = Start-Process -Wait -PassThru -NoNewWindow "${pythonScriptDir}\easy_install.exe" "pip"
-    if (($installProcess.ExitCode -ne 0) -or !(Check-Pip))
-    {
-        throw 'Installing pip for Python failed.'
-    }
-
-    Write-Output "Finished installing pip"
 }
 
 function Check-NovaClient{[CmdletBinding()]param()
