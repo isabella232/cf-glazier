@@ -227,7 +227,7 @@ function Add-UnattendScripts{[CmdletBinding()]param($vhdMountLetter)
     foreach ($tool in $tools)
     {
       $destination = Join-Path $destinationDir $tool.destination
-      Download-File $tool.Url $destination
+      Download-File-With-Retry $tool.Url $destination
     }
 
     Copy-Item -Recurse "${scriptsDir}\*" $destinationDir
@@ -254,7 +254,7 @@ function Add-GlazierProfile{[CmdletBinding()]param($vhdMountLetter, $glazierProf
     foreach ($tool in $tools)
     {
       $destination = Join-Path $destinationDir $tool.destination
-      Download-File $tool.Url $destination
+      Download-File-With-Retry $tool.Url $destination
     }
 
     Copy-Item -Recurse "${profileDir}\*" $destinationDir

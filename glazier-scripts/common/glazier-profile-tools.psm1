@@ -43,7 +43,7 @@ function Download-GlazierProfileResources{[CmdletBinding()]param($glazierProfile
     $destinationDir = Split-Path $destination
 
     mkdir $destinationDir -ErrorAction "SilentlyContinue" | Out-Null
-    Download-File $url $destination
+    Download-File-With-Retry $url $destination
   }
 }
 
