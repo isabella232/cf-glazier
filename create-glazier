@@ -973,7 +973,7 @@ function validate_url()
 	# check if the first parameter verifies the regexp
 	if [[ ! $1 =~ $regex ]];
 	then
-		error 1 "Proxy ${bldylw}$1${txtrst} doesn't look like a valid URL"
+		error 1 "${bldylw}$1${txtrst} is not a valid Windows Proxy URL"
 		exit 1
 	fi
 
