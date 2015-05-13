@@ -272,12 +272,14 @@ function parse_parameters()
 			vmhttpproxy=$1
 			shift
 			info 3 "Got ${bldylw}glazier-vm-http-proxy${txtrst} = ${vmhttpproxy}"
+			validate_url ${vmhttpproxy}
 			;;
 		"--glazier-vm-https-proxy")
 			shift
 			vmhttpsproxy=$1
 			shift
 			info 3 "Got ${bldylw}glazier-vm-https-proxy${txtrst} = ${vmhttpsproxy}"
+			validate_url ${vmhttpsproxy}
 			;;
 		"--help"|"-h")
 			show_help
@@ -963,6 +965,19 @@ function validate_virtualbox()
 }
 
 
+# checks if a string is a valid url or not
+function validate_url()
+{
+	regex='(http)://[-A-Za-z0-9\+&@#/%?=~_|!:,.;]*[-A-Za-z0-9\+&@#/%=~_|]'
+
+	# check if the first parameter verifies the regexp
+	if [[ ! $1 =~ $regex ]];
+	then
+		error 1 "Proxy ${bldylw}$1${txtrst} doesn't look like a valid URL"
+		exit 1
+	fi
+
+}
 
 # shows a green info message
 # Syntax:
@@ -1195,3 +1210,4 @@ run_virtualbox
 # remove temporary directory
 info 3 "Remove temporary directory"
 run 3 rm -rf "${tmpdir}"
+

@@ -114,17 +114,16 @@ This is specified in autounattend.xml, at the end of the file, in a RunSynchrono
 - `--virtio-iso` - required - path to a virtio iso file
 - `--profile` - optional - path to a `glazier profile`; the directory needs to have the correct structure; this parameter can be specified multiple times; all the specified profiles will be part of the `builder.iso` and made available to `new-image` in the `glazier vm`
 - `--vm-path` - optional - path to a directory where VBox files will be saved; by default, the files will be saved to ~/.glazier
-- `--product-key` - optional - windows product key used to activate the `glazier vm`. Leave empty if you're using a VL Windows ISO with a KMS server
-
-    The following combinations of Windows ISOs and product keys `will` work :
-- Retail Windows ISO with valid key
-- VL Windows ISO with valid key
-- VL Windows ISO without key
-
-    The following combinations of Windows ISOs and product keys  `will not` work
-- Retail Windows ISO with invalid key
-- Retail Windows ISO without key
-- VL Windows ISO with invalid key
+- `--os-network-id` - required - OpenStack network id
+- `--os-key-name` - required - OpenStack key name
+- `--os-security-group` - required - OpenStack security group
+- `--os-flavor` - required - OpenStack flavor
+- `--insecure` - optional - create a Windows image for a HDP that doesen't have an https certificate
+- `--windows-update-proxy` - optional - proxy used for Windows Updates on image
+- `--glazier-vm-http-proxy` - optional - http proxy used for glazier Windows vm (if not specified, defaults to $HTTP_PROXY env var)
+- `--glazier-vm-https-proxy` - optional - https proxy used for glazier Windows vm (if not specified, defaults to $HTTP_PROXY env var)
+- `--use-volume-license` - optional - if this is specified, there's no need to specify --product-key (means you are using Windows VL)
+- `--product-key` - optional - windows product key used to activate the `glazier vm`. Don't specify if you're using a VL Windows ISO with a KMS server and you're using `--use-volume-license`
 
 ##New-Image
 
