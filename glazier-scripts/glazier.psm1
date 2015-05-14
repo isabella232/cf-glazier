@@ -537,9 +537,15 @@ function Push-Resources {
     $OpenStackFlavor = Read-Host "Openstack VM Flavor"
   }
 
-  $VmName = "${Image}-glazier-temp-instance-DO-NOT-USE"
+  $timestamp = Get-Date -f 'yyyyMMddHHmmss'
 
- try{
+  $VmName = "${Image}-glazier-temp-instance-DO-NOT-USE-${timestamp}"
+  Write-Verbose "Temp instance name will be ${VmName}"
+  $SnapshotImageName = "${SnapshotImageName}-${timestamp}"
+  Write-Verbose "Final image name will be ${SnapshotImageName}"
+  
+ try
+ {
    Validate-OSEnvVars
 
     $glazierProfile = Get-GlazierProfile $GlazierProfilePath
