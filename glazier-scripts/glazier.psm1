@@ -109,6 +109,16 @@ function New-Image {
     }
   }
 
+  if ($SkipInitializeStep -eq $false)
+  {
+    Set-OpenStackVars
+    Write-Output "Checking OS_* variables ..."
+    Validate-OSEnvVars
+    Write-Output "Checking nova client can connect to openstack ..."
+    Validate-NovaList
+  }
+
+
   $timestamp = Get-Date -f 'yyyyMMddHHmmss'
 
   $vhdMountLetter = $null
