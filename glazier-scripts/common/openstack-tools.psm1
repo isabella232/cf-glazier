@@ -506,3 +506,17 @@ function Validate-OSEnvVars{[CmdletBinding()]param()
   if ([string]::IsNullOrWhitespace($env:OS_TENANT_NAME)) { throw 'OS_TENANT_NAME missing!' }
 }
 
+function Validate-NovaList{[CmdletBinding()]param()
+  Write-Verbose "Checking nova client can connect to openstack ..."
+
+  $checkProcess = Start-Process -Wait -PassThru -NoNewWindow $novaBin "$(Get-InsecureFlag) list"
+
+  if ($checkProcess.ExitCode -ne 0)
+  {
+    throw 'Cannot connect to the provided OpenStack instance. Nova list failed.'
+  }
+  else
+  {
+    Write-Verbose "[OK] Nova list successful."
+  }
+}
