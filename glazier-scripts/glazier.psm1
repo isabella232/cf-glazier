@@ -98,7 +98,8 @@ function New-Image {
 
   if ([string]::IsNullOrWhitespace($GlazierProfilePath))
   {
-    Write-Error "GlazierProfilePath is empty. Please provide a valid path."
+    Write-Host -ForegroundColor Red "GlazierProfilePath is empty. Please provide a valid path."
+    exit 1
   }
   else
   {
@@ -109,36 +110,38 @@ function New-Image {
     }
   }
 
-  if ($SkipInitializeStep -eq $false)
-  {
-    Set-OpenStackVars
-    Write-Output "Checking OS_* variables ..."
-    Validate-OSEnvVars
-    Write-Output "Checking nova client can connect to openstack ..."
-    Validate-NovaList
-  }
-
-
-  $timestamp = Get-Date -f 'yyyyMMddHHmmss'
-
-  $vhdMountLetter = $null
-
-  # Prepare some variable names
-  $qcow2FileName = "$(Convert-ImageNameToFileName $Name)${timestamp}.qcow2"
-  Write-Verbose "qcow2 filename will be ${qcow2FileName}"
-  $vhdFileName = "$(Convert-ImageNameToFileName $Name)${timestamp}.vhd"
-  Write-Verbose "vhd filename will be ${vhdFileName}"
-  $workDir = Join-Path $Workspace $timestamp
-  Write-Verbose "Will be working in directory ${workDir}"
-  $qcow2Path = Join-Path $Workspace $qcow2FileName
-  Write-Verbose "Full qcow2 path will be ${qcow2Path}"
-  $vhdPath = Join-Path $workDir $vhdFileName
-  Write-Verbose "Full vhd path will be ${vhdPath}"
-  $wimPath = Join-Path $WindowsISOMountPath 'sources\install.wim'
-  Write-Verbose "Will be using wim from ${vhdPath}"
-
   try
   {
+    Write-Output 'Getting profile information ...'
+    $glazierProfile = Get-GlazierProfile $GlazierProfilePath
+    
+    $timestamp = Get-Date -f 'yyyyMMddHHmmss'
+
+    $vhdMountLetter = $null
+
+    # Prepare some variable names
+    $qcow2FileName = "$(Convert-ImageNameToFileName $Name)-$($glazierProfile.Name)-${timestamp}.qcow2"
+    Write-Verbose "qcow2 filename will be ${qcow2FileName}"
+    $vhdFileName = "$(Convert-ImageNameToFileName $Name)-$($glazierProfile.Name)-${timestamp}.vhd"
+    Write-Verbose "vhd filename will be ${vhdFileName}"
+    $workDir = Join-Path $Workspace $timestamp
+    Write-Verbose "Will be working in directory ${workDir}"
+    $qcow2Path = Join-Path $Workspace $qcow2FileName
+    Write-Verbose "Full qcow2 path will be ${qcow2Path}"
+    $vhdPath = Join-Path $workDir $vhdFileName
+    Write-Verbose "Full vhd path will be ${vhdPath}"
+    $wimPath = Join-Path $WindowsISOMountPath 'sources\install.wim'
+    Write-Verbose "Will be using wim from ${vhdPath}"   
+    
+    if ($SkipInitializeStep -eq $false)
+    {
+      Set-OpenStackVars
+      Write-Output "Checking OS_* variables ..."
+      Validate-OSEnvVars
+      Write-Output "Checking nova client can connect to openstack ..."
+      Validate-NovaList
+    }  
+  
     if (!(Verify-QemuImg))
     {
         throw "qemu-img not found, aborting."
@@ -148,15 +151,12 @@ function New-Image {
     {
         throw "Python clients not found, aborting."
     }
-
+    
     Write-Output 'Checking to see if script is running with administrative privileges ...'
     Check-IsAdmin
 
     Write-Output 'Validating wim file ...'
     Validate-WindowsWIM $wimPath
-
-    Write-Output 'Getting profile information ...'
-    $glazierProfile = Get-GlazierProfile $GlazierProfilePath
 
     # Make sure we have a clean working directory
     Write-Output 'Cleaning up work directory ...'
@@ -234,7 +234,7 @@ function New-Image {
 
   if ($SkipInitializeStep -eq $false)
   {
-    Initialize-Image -Qcow2ImagePath $qcow2Path -ImageName $Name -OpenStackKeyName $OpenStackKeyName -OpenStackSecurityGroup $OpenStackSecurityGroup -OpenStackNetworkId $OpenStackNetworkId -OpenStackFlavor $OpenStackFlavor
+    Initialize-Image -Qcow2ImagePath $qcow2Path -ImageName $Name -GlazierProfilePath $GlazierProfilePath -OpenStackKeyName $OpenStackKeyName -OpenStackSecurityGroup $OpenStackSecurityGroup -OpenStackNetworkId $OpenStackNetworkId -OpenStackFlavor $OpenStackFlavor
   }
 }
 
@@ -269,6 +269,8 @@ function Initialize-Image {
     [string]$Qcow2ImagePath,
     [Parameter(Mandatory=$true)]
     [string]$ImageName,
+    [Parameter(Mandatory=$true)]
+    [string]$GlazierProfilePath,
     [string]$OpenStackKeyName,
     [string]$OpenStackSecurityGroup,
     [string]$OpenStackNetworkId,
@@ -280,22 +282,11 @@ function Initialize-Image {
 
   if ($Cleanup -eq $false)
   {
-    Write-Warning "Cleanup flag is set to false. Temporary images and instances will not be deleted."
+    Write-Warning "Clean-up flag is set to false. Temporary images and instances will not be deleted."
   }
 
   $isVerbose = [bool]$PSBoundParameters["Verbose"]
   $PSDefaultParameterValues = @{"*:Verbose"=$isVerbose}
-
-  $timestamp = Get-Date -f 'yyyyMMddHHmmss'
-
-  $tempVMName = "${ImageName}-glazier-temp-instance-DO-NOT-USE-${timestamp}"
-  Write-Verbose "Temp instance name will be ${tempVMName}"
-  $tempImageName = "${ImageName}-glazier-temp-image-DO-NOT-USE-${timestamp}"
-  Write-Verbose "Temp image name will be ${tempImageName}"
-  $finalImageName = "${ImageName}-${timestamp}"
-  Write-Verbose "Final image name will be ${finalImageName}"
-  $OpenStackSwiftContainer = "${OpenStackSwiftContainer}-${tempImageName}"
-  Write-Verbose "Will be using ${OpenStackSwiftContainer} as a swift container name"
 
   if ([string]::IsNullOrWhitespace($OpenStackKeyName))
   {
@@ -304,7 +295,7 @@ function Initialize-Image {
 
   if ([string]::IsNullOrWhitespace($OpenStackKeyName))
   {
-    $OpenStackKeyName = Read-Host "Openstack SSH Key Name"
+    $OpenStackKeyName = Read-Host "OpenStack SSH Key Name"
   }
 
   if ([string]::IsNullOrWhitespace($OpenStackSecurityGroup))
@@ -314,7 +305,7 @@ function Initialize-Image {
 
   if ([string]::IsNullOrWhitespace($OpenStackSecurityGroup))
   {
-    $OpenStackSecurityGroup = Read-Host "Openstack Security Group Name"
+    $OpenStackSecurityGroup = Read-Host "OpenStack Security Group Name"
   }
 
   if ([string]::IsNullOrWhitespace($OpenStackNetworkId))
@@ -324,7 +315,7 @@ function Initialize-Image {
 
   if ([string]::IsNullOrWhitespace($OpenStackNetworkId))
   {
-    $OpenStackNetworkId = Read-Host "Openstack Network ID"
+    $OpenStackNetworkId = Read-Host "OpenStack Network ID"
   }
 
   if ([string]::IsNullOrWhitespace($OpenStackFlavor))
@@ -334,13 +325,41 @@ function Initialize-Image {
 
   if ([string]::IsNullOrWhitespace($OpenStackFlavor))
   {
-    $OpenStackFlavor = Read-Host "Openstack VM Flavor"
+    $OpenStackFlavor = Read-Host "OpenStack VM Flavor"
   }
 
-  Set-OpenStackVars
+  if ([string]::IsNullOrWhitespace($GlazierProfilePath))
+  {
+    Write-Host -ForegroundColor Red "GlazierProfilePath is empty. Please provide a valid path."
+    exit 1
+  }
+  else
+  {
+    if ((Test-Path $GlazierProfilePath) -eq $false)
+    {
+      Write-Verbose "${GlazierProfilePath} not found on the local drive, trying the builder image."
+      $GlazierProfilePath = Join-Path 'A:\profiles' $GlazierProfilePath
+    }
+  }
 
   try
   {
+    Write-Output 'Getting profile information ...'
+    $glazierProfile = Get-GlazierProfile $GlazierProfilePath  
+    
+    $timestamp = Get-Date -f 'yyyyMMddHHmmss'
+
+    $tempVMName = "${ImageName}-$($glazierProfile.Name)-glazier-temp-instance-DO-NOT-USE-${timestamp}"
+    Write-Verbose "Temp instance name will be ${tempVMName}"
+    $tempImageName = "${ImageName}-$($glazierProfile.Name)-glazier-temp-image-DO-NOT-USE-${timestamp}"
+    Write-Verbose "Temp image name will be ${tempImageName}"
+    $finalImageName = "${ImageName}-$($glazierProfile.Name)-${timestamp}"
+    Write-Verbose "Final image name will be ${finalImageName}"
+    $OpenStackSwiftContainer = "${OpenStackSwiftContainer}-${tempImageName}"
+    Write-Verbose "Will be using ${OpenStackSwiftContainer} as a swift container name"
+    
+    Set-OpenStackVars
+  
     Write-Output "Checking OS_* variables ..."
     Validate-OSEnvVars
 
@@ -484,7 +503,8 @@ function Push-Resources {
 
   if ([string]::IsNullOrWhitespace($GlazierProfilePath))
   {
-    Write-Error "GlazierProfilePath is empty. Please provide a valid path."
+    Write-Host -ForegroundColor Red "GlazierProfilePath is empty. Please provide a valid path."
+    exit 1
   }
   else
   {
@@ -504,7 +524,7 @@ function Push-Resources {
 
   if ([string]::IsNullOrWhitespace($OpenStackKeyName))
   {
-    $OpenStackKeyName = Read-Host "Openstack SSH Key Name"
+    $OpenStackKeyName = Read-Host "OpenStack Key Name"
   }
 
   if ([string]::IsNullOrWhitespace($OpenStackSecurityGroup))
@@ -514,7 +534,7 @@ function Push-Resources {
 
   if ([string]::IsNullOrWhitespace($OpenStackSecurityGroup))
   {
-    $OpenStackSecurityGroup = Read-Host "Openstack Security Group Name"
+    $OpenStackSecurityGroup = Read-Host "OpenStack Security Group Name"
   }
 
   if ([string]::IsNullOrWhitespace($OpenStackNetworkId))
@@ -524,7 +544,7 @@ function Push-Resources {
 
   if ([string]::IsNullOrWhitespace($OpenStackNetworkId))
   {
-    $OpenStackNetworkId = Read-Host "Openstack Network ID"
+    $OpenStackNetworkId = Read-Host "OpenStack Network ID"
   }
 
   if ([string]::IsNullOrWhitespace($OpenStackFlavor))
@@ -534,15 +554,22 @@ function Push-Resources {
 
   if ([string]::IsNullOrWhitespace($OpenStackFlavor))
   {
-    $OpenStackFlavor = Read-Host "Openstack VM Flavor"
+    $OpenStackFlavor = Read-Host "OpenStack VM Flavor"
   }
 
-  $VmName = "${Image}-glazier-temp-instance-DO-NOT-USE"
-
- try{
-   Validate-OSEnvVars
-
+  try
+  {
     $glazierProfile = Get-GlazierProfile $GlazierProfilePath
+
+    $timestamp = Get-Date -f 'yyyyMMddHHmmss'
+
+    $VmName = "${Image}-$($glazierProfile.Name)-glazier-temp-instance-DO-NOT-USE-${timestamp}"
+    Write-Verbose "Temp instance name will be ${VmName}"
+    $SnapshotImageName = "${SnapshotImageName}-$($glazierProfile.Name)-${timestamp}"
+    Write-Verbose "Final image name will be ${SnapshotImageName}"
+
+    Validate-OSEnvVars
+ 
     Write-Verbose "Generating user-data script"
     $stringBuilder = New-Object System.Text.StringBuilder
     $stringBuilder.AppendLine("#ps1")

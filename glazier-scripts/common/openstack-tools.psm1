@@ -509,7 +509,7 @@ function Validate-OSEnvVars{[CmdletBinding()]param()
 function Validate-NovaList{[CmdletBinding()]param()
   Write-Verbose "Checking nova client can connect to openstack ..."
 
-  $checkProcess = Start-Process -Wait -PassThru -NoNewWindow $novaBin "$(Get-InsecureFlag) list"
+  $checkProcess = Start-Process -Wait -PassThru -NoNewWindow $novaBin "$(Get-InsecureFlag) list --minimal"
 
   if ($checkProcess.ExitCode -ne 0)
   {
