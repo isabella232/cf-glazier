@@ -234,7 +234,7 @@ function New-Image {
 
   if ($SkipInitializeStep -eq $false)
   {
-    Initialize-Image -Qcow2ImagePath $qcow2Path -ImageName $Name -GlazierProfilePath -$GlazierProfilePath -OpenStackKeyName $OpenStackKeyName -OpenStackSecurityGroup $OpenStackSecurityGroup -OpenStackNetworkId $OpenStackNetworkId -OpenStackFlavor $OpenStackFlavor
+    Initialize-Image -Qcow2ImagePath $qcow2Path -ImageName $Name -GlazierProfilePath $GlazierProfilePath -OpenStackKeyName $OpenStackKeyName -OpenStackSecurityGroup $OpenStackSecurityGroup -OpenStackNetworkId $OpenStackNetworkId -OpenStackFlavor $OpenStackFlavor
   }
 }
 
