@@ -24,6 +24,8 @@ function Get-GlazierProfile{[CmdletBinding()]param($glazierProfilePath)
   }
 
   $result = New-Object PSObject
+  
+  $result | Add-Member -MemberType 'NoteProperty' -Name 'Name' -value (Split-Path -Leaf $glazierProfilePath)
   $result | Add-Member -MemberType 'NoteProperty' -Name 'Path' -value $glazierProfilePath
   $result | Add-Member -MemberType 'NoteProperty' -Name 'FeaturesCSVFile' -value (Join-Path $glazierProfilePath 'features.csv')
   $result | Add-Member -MemberType 'NoteProperty' -Name 'ResourcesCSVFile' -value (Join-Path $glazierProfilePath 'resources.csv')
