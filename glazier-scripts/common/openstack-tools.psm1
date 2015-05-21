@@ -27,6 +27,7 @@ function Verify-PythonClientsInstallation{[CmdletBinding()]param()
 function Install-PythonClients{[CmdletBinding()]param()
     Write-Output "Installing Python clients"
     Install-VCRedist
+    Install-VCCompile
     Install-Python
     Install-NovaClient
     Install-GlanceClient
@@ -64,6 +65,29 @@ function Install-VCRedist{[CmdletBinding()]param()
     {
         If (Test-Path $vcInstaller){
 	      Remove-Item $vcInstaller
+        }
+    }
+}
+
+function Install-VCCompile{[CmdletBinding()]param()
+    try
+    {
+        $vcCompilerInstaller = Join-Path $env:temp "vccompile.msi"
+        Write-Output "Downloading VC++ Compiler for python ..."
+        $vcCompileUrl = Get-Dependency "vc-compile"
+        Download-File-With-Retry $vcCompileUrl $vcCompilerInstaller
+        $installProcess = Start-Process -Wait -PassThru -NoNewWindow msiexec "/quiet /i ${vcCompilerInstaller}"
+        if ($installProcess.ExitCode -ne 0)
+        {
+            throw 'Installing VC++ Copiler for python failed.'
+        }
+
+        Write-Output "Finished installing VC++ Copiler for python."
+    }
+    finally
+    {
+        If (Test-Path $vcCompilerInstaller){
+	      Remove-Item $vcCompilerInstaller
         }
     }
 }
