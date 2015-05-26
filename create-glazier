@@ -1094,20 +1094,18 @@ function expand_paths()
 function run_virtualbox()
 {
 
-	local vm
-
 	if [ -e ${vmpath}/vbox/${vmname}/${vmname}.vdi ];
 	then
 		info 3 "Unregister & delete harddisk"
 		VBoxManage closemedium disk ${vmpath}/vbox/${vmname}/${vmname}.vdi --delete
 	fi
 
-	for vm in `VBoxManage list vms|cut -f 2 -d \{|cut -f 1 -d \}`;
-	do
-		info 3 "Unregistering virtual machine $vm"
-		run 2 VBoxManage unregistervm $vm
-	done
-
+	# unregister a previous glazier-vm, if it exists
+	if [ ! -z "`VBoxManage list vms|grep -w ${vmname}`" ];
+	then
+		info 3 "Unregistering existing virtual machine $vmname"
+		run 2 VBoxManage unregistervm $vmname
+	fi
 
 	if [ -d "${vmpath}/vbox/${vmname}" ];
 	then
