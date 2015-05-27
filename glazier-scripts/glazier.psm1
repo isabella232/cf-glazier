@@ -140,6 +140,8 @@ function New-Image {
       Validate-OSEnvVars
       Write-Output "Checking nova client can connect to openstack ..."
       Validate-NovaList
+      Write-Output "Checking boot image parameters ..."
+      Validate-OSParams $OpenStackKeyName $OpenStackSecurityGroup $OpenStackNetworkId $OpenStackFlavor
     }  
   
     if (!(Verify-QemuImg))
@@ -362,6 +364,8 @@ function Initialize-Image {
   
     Write-Output "Checking OS_* variables ..."
     Validate-OSEnvVars
+    Write-Output "Checking boot image parameters ..."
+    Validate-OSParams $OpenStackKeyName $OpenStackSecurityGroup $OpenStackNetworkId $OpenStackFlavor
 
     if (Validate-SwiftExistence)
     {
