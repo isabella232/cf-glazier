@@ -111,7 +111,7 @@ This is specified in autounattend.xml, at the end of the file, in a RunSynchrono
 - `--windows-iso` - required - path to Windows ISO; image file name is validated to be of the right version and localization (we only support EN-US)
 - `--with-sql-server` - optional - can be `none`, `2012` or `2014`; by default, it's `none`
 - `--sql-server-iso` - if `--with-sql-server` is specified, this argument is required; it needs to point to a SQL Server ISO that is the correct version
-- `--virtio-iso` - required - path to a virtio iso file; the supported virtio drivers version is 0.1.96
+- `--virtio-iso` - required - path to a virtio iso file; the supported virtio drivers version is 0.1.96; you can download the drivers iso from https://fedorapeople.org/groups/virt/virtio-win/direct-downloads/archive-virtio/virtio-win-0.1.96/
 - `--profile` - optional - path to a `glazier profile`; the directory needs to have the correct structure; this parameter can be specified multiple times; all the specified profiles will be part of the `builder.iso` and made available to `new-image` in the `glazier vm`
 - `--vm-path` - optional - path to a directory where VBox files will be saved; by default, the files will be saved to ~/.glazier
 - `--os-network-id` - required - OpenStack network id

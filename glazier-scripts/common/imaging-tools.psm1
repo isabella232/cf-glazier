@@ -179,7 +179,7 @@ function Add-VirtIODriversToImage{[CmdletBinding()]param($vhdMountLetter, $virti
     }
     else
     {
-      throw "Unsupported virtIO drivers version. Please use virtIO drivers 0.1.96"
+      throw "Validation of VirtIO drivers failed. Could not find ${virtioPath}\virtio-win-0.1.96_amd64.vfd. Please use VirtIO drivers 0.1.96."
     }
     Write-Verbose 'VirtIO drivers addded successfully'
   }
