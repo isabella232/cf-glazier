@@ -6,6 +6,16 @@ Import-Module -DisableNameChecking 'A:\common\glazier-hostutils.psm1'
 Import-Module -DisableNameChecking 'A:\common\glazier-profile-tools.psm1'
 Import-Module -DisableNameChecking 'A:\common\utils.psm1'
 
+#this function tests that the provided network-id, flavor, key and security key exist
+function Check-HostArgsOpenStackParams{[CmdletBinding()]param()
+    $openStackKey = Get-HostArg "os-key-name"
+    $openStackSecGroup = Get-HostArg "os-security-group"
+    $openStackNetworkId = Get-HostArg "os-network-id"
+    $openStackFlavor = Get-HostArg "os-flavor"
+
+    Validate-OSParams $openStackKey $openStackSecGroup $openStackNetworkId $openStackFlavor
+}
+
 Set-SystemProxy -Verbose
 
 if ((Verify-QemuImg) -eq $false)
@@ -17,6 +27,9 @@ if (!(Verify-PythonClientsInstallation))
 {
   Install-PythonClients -Verbose
 }
+
+Set-OpenStackVars
+Check-HostArgsOpenStackParams
 
 
 echo @"

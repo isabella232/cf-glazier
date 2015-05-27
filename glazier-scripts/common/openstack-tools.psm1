@@ -7,6 +7,7 @@ $pythonScriptDir = Join-Path $pythonDir 'Scripts'
 $glanceBin = Join-Path $pythonScriptDir 'glance.exe'
 $novaBin = Join-Path $pythonScriptDir 'nova.exe'
 $swiftBin = Join-Path $pythonScriptDir 'swift.exe'
+$neutronBin = Join-Path $pythonScriptDir 'neutron.exe'
 
 
 function Get-InsecureFlag{[CmdletBinding()]param()
@@ -32,6 +33,7 @@ function Install-PythonClients{[CmdletBinding()]param()
     Install-NovaClient
     Install-GlanceClient
     Install-SwiftClient
+    Install-NeutronClient
     Write-Output "Done"
 }
 
@@ -168,6 +170,27 @@ function Install-GlanceClient{[CmdletBinding()]param()
     }
 
     Write-Output "Finished installing glance client"
+}
+
+function Check-NeutronClient{[CmdletBinding()]param()
+    return (Test-Path $neutronBin)
+}
+
+function Install-NeutronClient{[CmdletBinding()]param()
+    if(Check-NeutronClient)
+    {
+        Write-Output "NeutronClient already installed"
+        return
+    }
+    Write-Output "Installing python-neutronclient ..."
+    $neutronVersion = Get-Dependency "python-neutronclient-version"
+    $installProcess = Start-Process -Wait -PassThru -NoNewWindow "${pythonScriptDir}\pip.exe" "install python-neutronclient==${neutronVersion}"
+    if (($installProcess.ExitCode -ne 0) -or !(Check-NeutronClient))
+    {
+        throw 'Installing neutron client failed.'
+    }
+
+    Write-Output "Finished installing neutron client"
 }
 
 function Check-SwiftClient{[CmdletBinding()]param()
@@ -543,4 +566,66 @@ function Validate-NovaList{[CmdletBinding()]param()
   {
     Write-Verbose "[OK] Nova list successful."
   }
+}
+
+#check for existance of the OpenStack parameters
+function Validate-OSParams{[CmdletBinding()]param($keyName, $securityGroup, $networkId, $flavor)
+    Write-Verbose "Checking provided OpenStack parameters ..."    
+    $errors = @()
+
+    Write-Verbose "Checking flavor ${flavor} ..."
+    $openStackProcess = Start-Process -Wait -PassThru -NoNewWindow $novaBin "$(Get-InsecureFlag) flavor-show ${flavor}"
+
+    if ($openStackProcess.ExitCode -ne 0)
+    {
+        $errors += "Flavor ${flavor} does not exist"
+    }
+    else
+    {
+        Write-Verbose "[OK] Flavor ${flavor} exists"
+    }
+
+    Write-Verbose "Checking key ${keyName} ..."
+    $openStackProcess = Start-Process -Wait -PassThru -NoNewWindow $novaBin "$(Get-InsecureFlag) keypair-show ${keyName}"
+
+    if ($openStackProcess.ExitCode -ne 0)
+    {
+        $errors += "Key ${keyName} does not exist"
+    }
+    else
+    {
+        Write-Verbose "[OK] Key ${keyName} exists"
+    }
+
+    Write-Verbose "Checking network id ${networkId} ..."
+    $openStackProcess = Start-Process -Wait -PassThru -NoNewWindow $neutronBin "$(Get-InsecureFlag) net-show ${networkId}"
+
+    if ($openStackProcess.ExitCode -ne 0)
+    {
+        $errors += "Network ${networkId} does not exist"
+    }
+    else
+    {
+        Write-Verbose "[OK] Network ${networkId} exists"
+    }
+
+
+    Write-Verbose "Checking security group ${securityGroup} ..."
+    $openStackProcess = Start-Process -Wait -PassThru -NoNewWindow $novaBin "$(Get-InsecureFlag) secgroup-list-rules ${securityGroup}"
+
+    if ($openStackProcess.ExitCode -ne 0)
+    {
+        $errors += "Security group ${securityGroup} does not exist"
+    }
+    else
+    {
+        Write-Verbose "[OK] Security group ${securityGroup} exists"
+    }
+
+
+    if ($errors.Length -ne 0)
+    {
+        Write-Host -ForegroundColor Red "Invalid settings:"
+        throw [string]::Join("`r`n", $errors)
+    }
 }
