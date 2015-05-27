@@ -167,7 +167,20 @@ function Create-BCDBootConfig{[CmdletBinding()]param($vhdMountLetter)
 function Add-VirtIODriversToImage{[CmdletBinding()]param($vhdMountLetter, $virtioPath)
   try
   {
-    Add-WindowsDriver -Path "${vhdMountLetter}:\" -Driver "${virtioPath}\WIN8\AMD64" -ForceUnsigned -Recurse
+    if ( Test-Path "${virtioPath}\virtio-win-0.1.96_amd64.vfd" )
+    {
+      $driversprefix = "2k12R2\amd64"
+      Add-WindowsDriver -Path "${vhdMountLetter}:\" -Driver "${virtioPath}\Balloon\${driversprefix}" -ForceUnsigned -Recurse
+      Add-WindowsDriver -Path "${vhdMountLetter}:\" -Driver "${virtioPath}\NetKVM\${driversprefix}" -ForceUnsigned -Recurse
+      Add-WindowsDriver -Path "${vhdMountLetter}:\" -Driver "${virtioPath}\viorng\${driversprefix}" -ForceUnsigned -Recurse
+      Add-WindowsDriver -Path "${vhdMountLetter}:\" -Driver "${virtioPath}\vioscsi\${driversprefix}" -ForceUnsigned -Recurse
+      Add-WindowsDriver -Path "${vhdMountLetter}:\" -Driver "${virtioPath}\vioserial\${driversprefix}" -ForceUnsigned -Recurse
+      Add-WindowsDriver -Path "${vhdMountLetter}:\" -Driver "${virtioPath}\viostor\${driversprefix}" -ForceUnsigned -Recurse
+    }
+    else
+    {
+      throw "Validation of VirtIO drivers failed. Could not find ${virtioPath}\virtio-win-0.1.96_amd64.vfd. Please use VirtIO drivers 0.1.96."
+    }
     Write-Verbose 'VirtIO drivers addded successfully'
   }
   catch

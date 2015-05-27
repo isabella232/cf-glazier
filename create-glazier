@@ -1077,6 +1077,40 @@ function run()
 
 
 
+# prompts the user a Y/N question, exists with 0 or 1 depending on the answer
+function question()
+{
+	local answer
+
+	# loop until a valid answer is provided
+	while [ true ];
+	do
+		echo
+		echo -n "$* (y/n):"
+		read answer
+
+		# transform the answer to lowercase
+		answer=`echo $answer|tr '[:upper:]' '[:lower:]'`
+
+		case ${answer} in
+		"y"|"yes")
+			# exit the function with 'true' retcode
+			return 0
+		;;
+		"n"|"no")
+			# exit the function with 'false' retcode
+			return 1
+		;;
+		*)
+			# display error, stay in the loop and show the question again
+			echo "Please enter 'y' or 'n'"
+		;;
+		esac
+	done
+
+}
+
+
 # expands variables that contain paths (from ~ to /home/user, for example)
 function expand_paths()
 {
@@ -1094,25 +1128,39 @@ function expand_paths()
 function run_virtualbox()
 {
 
-	local vm
-
 	if [ -e ${vmpath}/vbox/${vmname}/${vmname}.vdi ];
 	then
 		info 3 "Unregister & delete harddisk"
 		VBoxManage closemedium disk ${vmpath}/vbox/${vmname}/${vmname}.vdi --delete
 	fi
 
-	for vm in `VBoxManage list vms|cut -f 2 -d \{|cut -f 1 -d \}`;
-	do
-		info 3 "Unregistering virtual machine $vm"
-		run 2 VBoxManage unregistervm $vm
-	done
-
+	# unregister a previous glazier-vm, if it exists
+	if [ ! -z "`VBoxManage list vms|grep -w ${vmname}`" ];
+	then
+		question "Do you want to unregister the vm ${bldylw}${vmname}${txtrst}" &&
+		{
+			info 3 "Unregistering virtual machine $vmname"
+			run 2 VBoxManage unregistervm $vmname
+			true
+		} ||
+		{
+			error 1 "Exiting"
+			exit 1
+		}
+	fi
 
 	if [ -d "${vmpath}/vbox/${vmname}" ];
 	then
-		info 3 "Delete old VM directory"
-		run 2 rm -rf "${vmpath}/vbox/${vmname}"
+		question "Do you want to delete the disk ${bldylw}${vmpath}/vbox/${vmname}${txtrst}" &&
+		{
+			info 3 "Delete old VM directory"
+			run 2 rm -rf "${vmpath}/vbox/${vmname}"
+			true
+		} ||
+		{
+			error 1 "Exiting"
+			exit 1
+		}
 	fi
 
 	info 3 "Create VM and register with VirtualBox"
