@@ -109,6 +109,48 @@ function New-Image {
       $GlazierProfilePath = Join-Path 'A:\profiles' $GlazierProfilePath
     }
   }
+  if ($SkipInitializeStep -eq $false)
+    {
+    if ([string]::IsNullOrWhitespace($OpenStackKeyName))
+    {
+      $OpenStackKeyName = Get-HostArg "os-key-name"
+    }
+
+    if ([string]::IsNullOrWhitespace($OpenStackKeyName))
+    {
+      $OpenStackKeyName = Read-Host "OpenStack SSH Key Name"
+    }
+
+    if ([string]::IsNullOrWhitespace($OpenStackSecurityGroup))
+    {
+      $OpenStackSecurityGroup = Get-HostArg "os-security-group"
+    }
+
+    if ([string]::IsNullOrWhitespace($OpenStackSecurityGroup))
+    {
+      $OpenStackSecurityGroup = Read-Host "OpenStack Security Group Name"
+    }
+
+    if ([string]::IsNullOrWhitespace($OpenStackNetworkId))
+    {
+      $OpenStackNetworkId = Get-HostArg "os-network-id"
+    }
+
+    if ([string]::IsNullOrWhitespace($OpenStackNetworkId))
+    {
+      $OpenStackNetworkId = Read-Host "OpenStack Network ID"
+    }
+
+    if ([string]::IsNullOrWhitespace($OpenStackFlavor))
+    {
+      $OpenStackFlavor = Get-HostArg "os-flavor"
+    }
+
+    if ([string]::IsNullOrWhitespace($OpenStackFlavor))
+    {
+      $OpenStackFlavor = Read-Host "OpenStack VM Flavor"
+    }
+  }
 
   try
   {
