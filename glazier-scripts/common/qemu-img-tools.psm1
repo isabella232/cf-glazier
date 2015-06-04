@@ -45,3 +45,19 @@ function Convert-VHDToQCOW2{[CmdletBinding()]param($sourceVhd, $destinationQcow2
     Write-Verbose "vhd converted to qcow2 successfully."
   }
 }
+
+function Convert-VHDToVMDK{[CmdletBinding()]param($sourceVhd, $destinationVmdk)
+  Write-Verbose "Converting vhd '${sourceVhd}' to vmdk '${destinationVmdk}' ..."
+
+  $convertProcess = Start-Process -Wait -PassThru -NoNewWindow $qemuBin "convert -O vmdk `"${sourceVhd}`" `"${destinationVmdk}`""
+
+  if ($convertProcess.ExitCode -ne 0)
+  {
+    throw 'Converting vhd to vmdk failed.'
+  }
+  else
+  {
+    Write-Verbose "vhd converted to vmdk successfully."
+  }
+}
+

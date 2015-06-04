@@ -181,13 +181,61 @@ function Add-VirtIODriversToImage{[CmdletBinding()]param($vhdMountLetter, $virti
     {
       throw "Validation of VirtIO drivers failed. Could not find ${virtioPath}\virtio-win-0.1.96_amd64.vfd. Please use VirtIO drivers 0.1.96."
     }
-    Write-Verbose 'VirtIO drivers addded successfully'
+    Write-Verbose 'VirtIO drivers added successfully'
   }
   catch
   {
     Write-Verbose $_.Exception
     $exceptionMessage = $_.Exception.Message
     throw "Error while trying to add VirtIO drivers from '${virtioPath}' to vhd mounted at '${vhdMountLetter}:\': ${exceptionMessage}"
+  }
+}
+
+function Add-VMwareToolsDriversToImage{[CmdletBinding()]param($vhdMountLetter, $vmwareToolsPath, $workspacePath)
+  try
+  {
+    $vmwareToolsInstallPath = Join-Path $workspacePath 'wmware-tools'
+    Clean-Dir $vmwareToolsInstallPath
+    $setupBin = Join-Path $vmwareToolsPath 'setup64.exe'
+  
+    if ((Test-Path $setupBin) -eq $false)
+    {
+      throw "Could not find VMware Tools installer at '${setupBin}'"
+    }
+    
+    $installProcess = Start-Process -Wait -PassThru -NoNewWindow $setupBin "/a /s /v`"/qb TARGETDIR=`"${vmwareToolsInstallPath}`" ADDLOCAL=ALL`""
+
+    if ($installProcess.ExitCode -ne 0)
+    {
+      throw 'Installing VMware tools locally failed.'
+    }
+    else
+    {
+      Write-Verbose "Local install of VMware tools successful."
+    }
+    
+    $drivers = @(
+      "${vmwareToolsInstallPath}\VMware\VMware Tools\VMware\Drivers\vmxnet3",
+      "${vmwareToolsInstallPath}\VMware\VMware Tools\VMware\Drivers\mouse",
+      "${vmwareToolsInstallPath}\VMware\VMware Tools\VMware\Drivers\memctl",
+      "${vmwareToolsInstallPath}\VMware\VMware Tools\VMware\Drivers\pvscsi",
+      "${vmwareToolsInstallPath}\VMware\VMware Tools\VMware\Drivers\video_wddm",
+      "${vmwareToolsInstallPath}\VMware\VMware Tools\VMware\Drivers\video_xpdm",
+      "${vmwareToolsInstallPath}\VMware\VMware Tools\VMware\Drivers\vmci"
+    )
+  
+    foreach ($driver in $drivers)
+    {
+      Add-WindowsDriver -Path "${vhdMountLetter}:\" -Driver $driver -ForceUnsigned -Recurse      
+    }
+    
+    Write-Verbose 'VMware drivers added successfully'
+  }
+  catch
+  {
+    Write-Verbose $_.Exception
+    $exceptionMessage = $_.Exception.Message
+    throw "Error while trying to add VMware drivers from '${vmwareToolsPath}' to vhd mounted at '${vhdMountLetter}:\': ${exceptionMessage}"
   }
 }
 
