@@ -49,7 +49,7 @@ function Convert-VHDToQCOW2{[CmdletBinding()]param($sourceVhd, $destinationQcow2
 function Convert-VHDToVMDK{[CmdletBinding()]param($sourceVhd, $destinationVmdk)
   Write-Verbose "Converting vhd '${sourceVhd}' to vmdk '${destinationVmdk}' ..."
 
-  $convertProcess = Start-Process -Wait -PassThru -NoNewWindow $qemuBin "convert -O vmdk `"${sourceVhd}`" `"${destinationVmdk}`""
+  $convertProcess = Start-Process -Wait -PassThru -NoNewWindow $qemuBin "convert -o adapter_type=lsilogic -O vmdk `"${sourceVhd}`" `"${destinationVmdk}`""
 
   if ($convertProcess.ExitCode -ne 0)
   {

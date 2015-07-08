@@ -215,10 +215,10 @@ function Add-VMwareToolsDriversToImage{[CmdletBinding()]param($vhdMountLetter, $
     }
     
     $drivers = @(
+      "${vmwareToolsPath}\Program Files\VMware\VMware Tools\Drivers\pvscsi\amd64\",
       "${vmwareToolsInstallPath}\VMware\VMware Tools\VMware\Drivers\vmxnet3",
       "${vmwareToolsInstallPath}\VMware\VMware Tools\VMware\Drivers\mouse",
       "${vmwareToolsInstallPath}\VMware\VMware Tools\VMware\Drivers\memctl",
-      "${vmwareToolsInstallPath}\VMware\VMware Tools\VMware\Drivers\pvscsi",
       "${vmwareToolsInstallPath}\VMware\VMware Tools\VMware\Drivers\video_wddm",
       "${vmwareToolsInstallPath}\VMware\VMware Tools\VMware\Drivers\video_xpdm",
       "${vmwareToolsInstallPath}\VMware\VMware Tools\VMware\Drivers\vmci"

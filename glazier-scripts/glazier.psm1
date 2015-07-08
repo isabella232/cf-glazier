@@ -56,7 +56,7 @@ function New-Image {
     [string]$OpenStackSecurityGroup,
     [string]$OpenStackNetworkId,
     [string]$OpenStackFlavor,
-    [ValidateSet('kvm','esxi')]
+    [ValidateSet('kvm','esxi','kvmforesxi')]
     [string]$Hypervisor='kvm'
   )
 
@@ -125,6 +125,7 @@ function New-Image {
     switch ($Hypervisor)
     {
       "kvm" { $imageExtension = 'qcow2' }
+      "kvmforesxi" { $imageExtension = 'qcow2' }
       "esxi" { $imageExtension = 'vmdk' }
     }
     
@@ -208,7 +209,17 @@ function New-Image {
       Write-Output 'Adding VirtIO drivers to vhd ...'
       Add-VirtIODriversToImage $vhdMountLetter $VirtIOPath
     }
-    else
+    
+    if ($Hypervisor -eq 'kvmforesxi')
+    {
+      Write-Output 'Adding VirtIO drivers to vhd ...'
+      Add-VirtIODriversToImage $vhdMountLetter $VirtIOPath
+
+      Write-Output 'Adding VMware Tools drivers to vhd ...'
+      Add-VMwareToolsDriversToImage $vhdMountLetter $VirtIOPath $workDir
+    }
+    
+    if ($Hypervisor -eq 'esxi')
     {
       Write-Output 'Adding VMware Tools drivers to vhd ...'
       Add-VMwareToolsDriversToImage $vhdMountLetter $VirtIOPath $workDir
@@ -226,8 +237,24 @@ function New-Image {
     Write-Output 'Dismounting vhd ...'
     Dismount-VHDImage $vhdPath
 
-    Write-Output 'Converting vhd to qcow2 ...'
-    Convert-VHDToVMDK $vhdPath $qcow2Path
+    
+    if ($Hypervisor -eq 'kvm')
+    {
+      Write-Output 'Converting vhd to qcow2 ...'
+      Convert-VHDToQCOW2 $vhdPath $qcow2Path
+    }
+    
+    if ($Hypervisor -eq 'kvmforesxi')
+    {
+      Write-Output 'Converting vhd to qcow2 ...'
+      Convert-VHDToQCOW2 $vhdPath $qcow2Path
+    }
+    
+    if ($Hypervisor -eq 'esxi')
+    {
+      Write-Output 'Converting vhd to vmdk ...'
+      Convert-VHDToVMDK $vhdPath $qcow2Path
+    }
 
     Write-Host "Done. Image ready: ${qcow2Path}" -ForegroundColor Green
   }
@@ -262,7 +289,7 @@ function New-Image {
 
   if ($SkipInitializeStep -eq $false)
   {
-    Initialize-Image -Qcow2ImagePath $qcow2Path -ImageName $Name -GlazierProfilePath $GlazierProfilePath -OpenStackKeyName $OpenStackKeyName -OpenStackSecurityGroup $OpenStackSecurityGroup -OpenStackNetworkId $OpenStackNetworkId -OpenStackFlavor $OpenStackFlavor
+    Initialize-Image -Qcow2ImagePath $qcow2Path -ImageName $Name -GlazierProfilePath $GlazierProfilePath -OpenStackKeyName $OpenStackKeyName -OpenStackSecurityGroup $OpenStackSecurityGroup -OpenStackNetworkId $OpenStackNetworkId -OpenStackFlavor $OpenStackFlavor -Cleanup:$CleanupWhenDone
   }
 }
 
