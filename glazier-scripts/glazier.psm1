@@ -56,8 +56,8 @@ function New-Image {
     [string]$OpenStackSecurityGroup,
     [string]$OpenStackNetworkId,
     [string]$OpenStackFlavor,
-    [ValidateSet('kvm','esxi','kvmforesxi')]
-    [string]$Hypervisor=''
+    [ValidateSet('','kvm','esxi','kvmforesxi')]
+    [string]$Hypervisor='kvmforesxi'
   )
 
   $isVerbose = [bool]$PSBoundParameters["Verbose"]
@@ -81,7 +81,7 @@ function New-Image {
   if ([string]::IsNullOrWhitespace($Hypervisor))
   {
     $Hypervisor = Get-Hypervisor
-    if ([string]::IsNullOrWhitespace($Hypervisor)
+    if ([string]::IsNullOrWhitespace($Hypervisor))
       {
         throw "Hypervisor is not defined"
       }

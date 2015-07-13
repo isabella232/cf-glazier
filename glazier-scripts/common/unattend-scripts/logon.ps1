@@ -98,6 +98,14 @@ try
         throw "Running $compileDotNetAssembliesScript failed. Log: $compileDotNetAssembliesLog"
     }
 
+    # Install vmware guest tools
+    $vmwareGuestTools = Join-Path ${resourcesDir} 'VMWare-tools.exe'
+    if (Test-Path "$vmwareGuestTools")
+    {
+      $Host.UI.RawUI.WindowTitle = "Installing vmware guest tools ..."
+      & $vmwareGuestTools /s /v /qn
+    }
+
     # Save the compact script and unpack/save utilities
     # unpack sdelete
     $Host.UI.RawUI.WindowTitle = "Saving compact utilities ..."
