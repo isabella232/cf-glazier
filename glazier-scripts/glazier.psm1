@@ -57,7 +57,7 @@ function New-Image {
     [string]$OpenStackNetworkId,
     [string]$OpenStackFlavor,
     [ValidateSet('kvm','esxi','kvmforesxi')]
-    [string]$Hypervisor='kvm'
+    [string]$Hypervisor=''
   )
 
   $isVerbose = [bool]$PSBoundParameters["Verbose"]
