@@ -11,6 +11,7 @@ use_colors="yes"
 windows_iso=""
 sqlserver_iso=""
 virtio_iso=""
+hypervisor=""
 profiles=""
 sqlserverversion="none"
 assetsdir="assets"
@@ -36,6 +37,7 @@ Syntax: `basename $0` <options>
 Available options:
 --windows-iso /path/to/windows_iso_kit		- (required) specifies the location of the Windows iso image
 --virtio-iso /path/to/virtio_iso_kit		- (required) specifies the path to the virtio iso image
+--hypervisor {kvm|esxi|kvmforesxi}		- (optional) specifies which hypervisor to use
 --profile PATH					- (optional) path to a glazier profile directory.
 						  Can be used multiple times
 --vm-path PATH					- (optional) path to a directory where VBox files will
@@ -231,6 +233,14 @@ function parse_parameters()
 			shift
 			info 3 "Got ${bldylw}virtio-iso${txtrst} = ${virtio_iso}"
 			echo virtio-iso,${virtio_iso} >>${tmpdir}/args.csv
+			;;
+		"--hypervisor")
+			shift
+			hypervisor=$1
+			shift
+			info 3 "Got ${bldylw}hypervisor${txtrst} = ${hypervisor}"
+			validate_hypervisor
+			echo hypervisor,${hypervisor} >>${tmpdir}/args.csv
 			;;
 		"--os-network-id")
 			shift
@@ -540,6 +550,28 @@ function create_vfd()
 	run 3 "rm -rf ${vmpath}/floppy"
 }
 
+
+# validate the virtualization type
+function validate_hypervisor()
+{
+	info 2 "Validating virtualization type..."
+
+	case ${hypervisor} in
+	"kvm")
+		info 3 "Using kvm as hypervisor"
+	;;
+	"esxi")
+		info 3 "Using esxi as hypervisor"
+	;;
+	"kvmforesxi")
+		info 3 "Using kvmforesxi as hypervisor"
+	;;
+	*)
+		error 1 "Unknown hypervisor ${hypervisor}"
+		exit 1
+	;;
+	esac
+}
 
 
 # check if we are connected to the Internet

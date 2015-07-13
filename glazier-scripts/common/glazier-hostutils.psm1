@@ -90,6 +90,20 @@ function Get-ProductKey{[CmdletBinding()]param()
   }
 }
 
+function Get-Hypervisor{[CmdletBinding()]param()
+  $fileExist = Test-Path A:\args.csv
+
+  if ($fileExist -eq $True)
+  {
+    $arg = Import-csv A:\args.csv -Header @("name","value") | Where-Object {$_.name -eq "hypervisor"}
+    return $arg.value
+  }
+  else
+  {
+    return ''
+  }
+}
+
 function Get-WindowsUpdateProxy{[CmdletBinding()]param()
   $fileExist = Test-Path A:\args.csv
 

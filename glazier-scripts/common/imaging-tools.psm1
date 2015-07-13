@@ -301,6 +301,39 @@ function Add-UnattendScripts{[CmdletBinding()]param($vhdMountLetter)
   }
 }
 
+function Add-HypervisorUnattendScripts{[CmdletBinding()]param($vhdMountLetter)
+  $destinationDir = "${vhdMountLetter}:\glazier\"
+  $scriptsDir = Join-Path $currentDir 'unattend-scripts'
+
+  switch ($Hypervisor)
+    {
+    "esxi" { $toolsHypervisorCSVFile = Join-Path $scriptsDir 'esxi.csv' }
+    "kvm" { $toolsHypervisorCSVFile = Join-Path $scriptsDir 'kvm.csv' }
+    "kvmforesxi" { $toolsHypervisorCSVFile = Join-Path $scriptsDir 'kvmforesxi.csv' }
+    }
+
+  try
+  {
+    Clean-Dir $destinationDir
+
+    $tools = Import-Csv $toolsHypervisorCSVFile
+
+    foreach ($tool in $tools)
+    {
+      $destination = Join-Path $destinationDir $tool.destination
+      Download-File-With-Retry $tool.Url $destination
+    }
+
+    Copy-Item -Recurse "${scriptsDir}\*" $destinationDir
+  }
+  catch
+  {
+    Write-Verbose $_.Exception
+    $exceptionMessage = $_.Exception.Message
+    throw "Error while trying to add unattend scripts to vhd mounted at '${vhdMountLetter}:\': ${exceptionMessage}"
+  }
+}
+
 function Add-GlazierProfile{[CmdletBinding()]param($vhdMountLetter, $glazierProfile)
   $destinationDir = "${vhdMountLetter}:\glazier\profile"
   $profileDir = $glazierProfile.Path

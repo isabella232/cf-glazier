@@ -78,6 +78,15 @@ function New-Image {
     $VirtIOPath = Get-VirtIOPath
   }
 
+  if ([string]::IsNullOrWhitespace($Hypervisor))
+  {
+    $Hypervisor = Get-Hypervisor
+    if ([string]::IsNullOrWhitespace($Hypervisor)
+      {
+        throw "Hypervisor is not defined"
+      }
+  }
+
   if ([string]::IsNullOrWhitespace($VirtIOPath))
   {
     $VirtIOPath = Read-Host "VirtIO ISO Path"
@@ -191,6 +200,9 @@ function New-Image {
 
     Write-Output 'Setting up tools for the unattended install ...'
     Add-UnattendScripts $vhdMountLetter
+
+    Write-Output 'Setting up hypervisor tools for the unattended install ...'
+    Add-HypervisorUnattendScripts $vhdMountLetter
 
     if([String]::IsNullOrWhiteSpace($Proxy) -eq $false)
     {
