@@ -103,7 +103,12 @@ try
     if (Test-Path "$vmwareGuestTools")
     {
       $Host.UI.RawUI.WindowTitle = "Installing vmware guest tools ..."
-      & $vmwareGuestTools /s /v /qn
+      $p = Start-Process -Wait -PassThru -FilePath $vmwareGuestTools -ArgumentList "/s /v /qn"
+      if ($p.ExitCode -ne 0)
+      {
+          throw "Installing VMware Guest Tools failed. $vmwareGuestTools"
+      }
+
     }
 
     # Save the compact script and unpack/save utilities
