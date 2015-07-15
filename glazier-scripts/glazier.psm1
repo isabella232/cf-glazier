@@ -244,7 +244,7 @@ function New-Image {
     Add-UnattendScripts $vhdMountLetter
 
     Write-Output 'Setting up hypervisor tools for the unattended install ...'
-    Add-HypervisorUnattendScripts $vhdMountLetter
+    Add-HypervisorUnattendScripts $vhdMountLetter $Hypervisor
 
     if([String]::IsNullOrWhiteSpace($Proxy) -eq $false)
     {
