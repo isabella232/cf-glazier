@@ -55,7 +55,9 @@ function New-Image {
     [string]$OpenStackKeyName,
     [string]$OpenStackSecurityGroup,
     [string]$OpenStackNetworkId,
-    [string]$OpenStackFlavor
+    [string]$OpenStackFlavor,
+    [ValidateSet('','kvm','esxi','kvmforesxi')]
+    [string]$Hypervisor='kvm'
   )
 
   $isVerbose = [bool]$PSBoundParameters["Verbose"]
@@ -74,6 +76,15 @@ function New-Image {
   if ([string]::IsNullOrWhitespace($VirtIOPath))
   {
     $VirtIOPath = Get-VirtIOPath
+  }
+
+  if ([string]::IsNullOrWhitespace($Hypervisor))
+  {
+    $Hypervisor = Get-Hypervisor
+    if ([string]::IsNullOrWhitespace($Hypervisor))
+      {
+        throw "Hypervisor is not defined"
+      }
   }
 
   if ([string]::IsNullOrWhitespace($VirtIOPath))
@@ -162,18 +173,25 @@ function New-Image {
     $vhdMountLetter = $null
 
     # Prepare some variable names
-    $qcow2FileName = "$(Convert-ImageNameToFileName $Name)-$($glazierProfile.Name)-${timestamp}.qcow2"
-    Write-Verbose "qcow2 filename will be ${qcow2FileName}"
+    switch ($Hypervisor)
+    {
+      "kvm" { $imageExtension = 'qcow2' }
+      "kvmforesxi" { $imageExtension = 'qcow2' }
+      "esxi" { $imageExtension = 'vmdk' }
+    }
+    
+    $qcow2FileName = "$(Convert-ImageNameToFileName $Name)-$($glazierProfile.Name)-${timestamp}.${imageExtension}"
+    Write-Verbose "image filename will be ${qcow2FileName}"
     $vhdFileName = "$(Convert-ImageNameToFileName $Name)-$($glazierProfile.Name)-${timestamp}.vhd"
     Write-Verbose "vhd filename will be ${vhdFileName}"
     $workDir = Join-Path $Workspace $timestamp
     Write-Verbose "Will be working in directory ${workDir}"
     $qcow2Path = Join-Path $Workspace $qcow2FileName
-    Write-Verbose "Full qcow2 path will be ${qcow2Path}"
+    Write-Verbose "Full image path will be ${qcow2Path}"
     $vhdPath = Join-Path $workDir $vhdFileName
     Write-Verbose "Full vhd path will be ${vhdPath}"
     $wimPath = Join-Path $WindowsISOMountPath 'sources\install.wim'
-    Write-Verbose "Will be using wim from ${vhdPath}"   
+    Write-Verbose "Will be using wim from ${vhdPath}"
     
     if ($SkipInitializeStep -eq $false)
     {
@@ -185,7 +203,7 @@ function New-Image {
       Write-Output "Checking boot image parameters ..."
       Validate-OSParams $OpenStackKeyName $OpenStackSecurityGroup $OpenStackNetworkId $OpenStackFlavor
     }  
-  
+   
     if (!(Verify-QemuImg))
     {
         throw "qemu-img not found, aborting."
@@ -194,6 +212,16 @@ function New-Image {
     if (!(Verify-PythonClientsInstallation))
     {
         throw "Python clients not found, aborting."
+    }
+    
+    if (!(Verify-PythonClientsInstallation))
+    {
+        throw "Python clients not found, aborting."
+    }
+    
+    if ($SizeInMB -lt 10000)
+    {
+        throw "Disk size is too small, it needs to be at least 10000 MB."
     }
     
     Write-Output 'Checking to see if script is running with administrative privileges ...'
@@ -215,6 +243,9 @@ function New-Image {
     Write-Output 'Setting up tools for the unattended install ...'
     Add-UnattendScripts $vhdMountLetter
 
+    Write-Output 'Setting up hypervisor tools for the unattended install ...'
+    Add-HypervisorUnattendScripts $vhdMountLetter
+
     if([String]::IsNullOrWhiteSpace($Proxy) -eq $false)
     {
         Write-Output 'Generating winupdate_proxy script ...'
@@ -227,8 +258,26 @@ function New-Image {
     Write-Output 'Adding glazier resources to image ...'
     Download-GlazierProfileResources $glazierProfile "${vhdMountLetter}:\"
 
-    Write-Output 'Adding VirtIO drivers to vhd ...'
-    Add-VirtIODriversToImage $vhdMountLetter $VirtIOPath
+    if ($Hypervisor -eq 'kvm')
+    {
+      Write-Output 'Adding VirtIO drivers to vhd ...'
+      Add-VirtIODriversToImage $vhdMountLetter $VirtIOPath
+    }
+    
+    if ($Hypervisor -eq 'kvmforesxi')
+    {
+      Write-Output 'Adding VirtIO drivers to vhd ...'
+      Add-VirtIODriversToImage $vhdMountLetter $VirtIOPath
+
+      Write-Output 'Adding VMware Tools drivers to vhd ...'
+      Add-VMwareToolsDriversToImage $vhdMountLetter $VirtIOPath $workDir
+    }
+    
+    if ($Hypervisor -eq 'esxi')
+    {
+      Write-Output 'Adding VMware Tools drivers to vhd ...'
+      Add-VMwareToolsDriversToImage $vhdMountLetter $VirtIOPath $workDir
+    }
 
     Write-Output 'Making vhd bootable ...'
     Create-BCDBootConfig $vhdMountLetter
@@ -242,8 +291,24 @@ function New-Image {
     Write-Output 'Dismounting vhd ...'
     Dismount-VHDImage $vhdPath
 
-    Write-Output 'Converting vhd to qcow2 ...'
-    Convert-VHDToQCOW2 $vhdPath $qcow2Path
+    
+    if ($Hypervisor -eq 'kvm')
+    {
+      Write-Output 'Converting vhd to qcow2 ...'
+      Convert-VHDToQCOW2 $vhdPath $qcow2Path
+    }
+    
+    if ($Hypervisor -eq 'kvmforesxi')
+    {
+      Write-Output 'Converting vhd to qcow2 ...'
+      Convert-VHDToQCOW2 $vhdPath $qcow2Path
+    }
+    
+    if ($Hypervisor -eq 'esxi')
+    {
+      Write-Output 'Converting vhd to vmdk ...'
+      Convert-VHDToVMDK $vhdPath $qcow2Path
+    }
 
     Write-Host "Done. Image ready: ${qcow2Path}" -ForegroundColor Green
   }
@@ -278,7 +343,7 @@ function New-Image {
 
   if ($SkipInitializeStep -eq $false)
   {
-    Initialize-Image -Qcow2ImagePath $qcow2Path -ImageName $Name -GlazierProfilePath $GlazierProfilePath -OpenStackKeyName $OpenStackKeyName -OpenStackSecurityGroup $OpenStackSecurityGroup -OpenStackNetworkId $OpenStackNetworkId -OpenStackFlavor $OpenStackFlavor
+    Initialize-Image -Qcow2ImagePath $qcow2Path -ImageName $Name -GlazierProfilePath $GlazierProfilePath -OpenStackKeyName $OpenStackKeyName -OpenStackSecurityGroup $OpenStackSecurityGroup -OpenStackNetworkId $OpenStackNetworkId -OpenStackFlavor $OpenStackFlavor -Cleanup:$CleanupWhenDone
   }
 }
 
