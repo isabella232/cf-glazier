@@ -303,9 +303,7 @@ function Add-UnattendScripts{[CmdletBinding()]param($vhdMountLetter)
   }
 }
 
-function Add-HypervisorUnattendScripts{[CmdletBinding()]param($vhdMountLetter)
-  Get-Hypervisor
-
+function Add-HypervisorUnattendScripts{[CmdletBinding()]param($vhdMountLetter, $Hypervisor)
   $destinationDir = "${vhdMountLetter}:\glazier\"
   $scriptsDir = Join-Path $currentDir 'unattend-scripts'
 
