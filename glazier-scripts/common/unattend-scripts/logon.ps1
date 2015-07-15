@@ -72,6 +72,18 @@ try
        mkdir $infoDir
     }
 
+    # Install vmware guest tools
+    $vmwareGuestTools = Join-Path ${resourcesDir} 'VMWare-tools.exe'
+    if (Test-Path "$vmwareGuestTools")
+    {
+      $Host.UI.RawUI.WindowTitle = "Installing vmware guest tools ..."
+      $p = Start-Process -Wait -PassThru -FilePath $vmwareGuestTools -ArgumentList '/s /v "/qn REBOOT=R"'
+      if ($p.ExitCode -ne 0)
+      {
+          throw "Installing VMware Guest Tools failed. $vmwareGuestTools"
+      }
+    }
+    
     # Copy the print password script
     $Host.UI.RawUI.WindowTitle = "Setting up print password script ..."
     $originalPrintPasswordScript = Join-Path ${resourcesDir} 'print-password.ps1'
@@ -98,19 +110,6 @@ try
         throw "Running $compileDotNetAssembliesScript failed. Log: $compileDotNetAssembliesLog"
     }
 
-    # Install vmware guest tools
-    $vmwareGuestTools = Join-Path ${resourcesDir} 'VMWare-tools.exe'
-    if (Test-Path "$vmwareGuestTools")
-    {
-      $Host.UI.RawUI.WindowTitle = "Installing vmware guest tools ..."
-      $p = Start-Process -Wait -PassThru -FilePath $vmwareGuestTools -ArgumentList "/s /v /qn"
-      if ($p.ExitCode -ne 0)
-      {
-          throw "Installing VMware Guest Tools failed. $vmwareGuestTools"
-      }
-
-    }
-
     # Save the compact script and unpack/save utilities
     # unpack sdelete
     $Host.UI.RawUI.WindowTitle = "Saving compact utilities ..."
@@ -128,6 +127,7 @@ try
 
     # Cleanup
     $Host.UI.RawUI.WindowTitle = "Removing glazier dir ..."
+
     Remove-Item -Recurse -Force $resourcesDir
     Remove-Item -Force "$ENV:SystemDrive\Unattend.xml"
 
