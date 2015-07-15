@@ -56,7 +56,7 @@ function New-Image {
     [string]$OpenStackSecurityGroup,
     [string]$OpenStackNetworkId,
     [string]$OpenStackFlavor,
-    [ValidateSet('kvm','esxi','kvmforesxi')]
+    [ValidateSet('','kvm','esxi','kvmforesxi')]
     [string]$Hypervisor='kvm'
   )
 
@@ -76,6 +76,15 @@ function New-Image {
   if ([string]::IsNullOrWhitespace($VirtIOPath))
   {
     $VirtIOPath = Get-VirtIOPath
+  }
+
+  if ([string]::IsNullOrWhitespace($Hypervisor))
+  {
+    $Hypervisor = Get-Hypervisor
+    if ([string]::IsNullOrWhitespace($Hypervisor))
+      {
+        throw "Hypervisor is not defined"
+      }
   }
 
   if ([string]::IsNullOrWhitespace($VirtIOPath))
@@ -191,6 +200,9 @@ function New-Image {
 
     Write-Output 'Setting up tools for the unattended install ...'
     Add-UnattendScripts $vhdMountLetter
+
+    Write-Output 'Setting up hypervisor tools for the unattended install ...'
+    Add-HypervisorUnattendScripts $vhdMountLetter
 
     if([String]::IsNullOrWhiteSpace($Proxy) -eq $false)
     {
