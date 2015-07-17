@@ -18,7 +18,10 @@ Available options:
 	- specifies the location of the SQLServer iso image
     	
 --virtio-iso /path/to/virtio_iso_kit		
-	- specifies the path to the virtio iso image
+	- specifies the path to the virtual drivers iso image
+
+--hypervisor {kvm|esxi|kvmforesxi}
+	- specifies which hypervisor to use. Valid options are "kvm", "esxi" or "kvmforesxi". By default it uses kvm
     	
 --profile PATH					            
 	- path to a glazier profile directory.Can be used multiple times. At leaset one profile is mandatory.
@@ -63,12 +66,39 @@ Available options:
 ##### OSX
 * [Virtual box 4.3.26](http://download.virtualbox.org/virtualbox/4.3.26/VirtualBox-4.3.26-98988-OSX.dmg)
 * Windows 2012 R2 image
-* [Windows VirtIO Image 0.1-81](http://alt.fedoraproject.org/pub/alt/virtio-win/stable/virtio-win-0.1-81.iso)
+* [Windows VirtIO Image 0.1.96](https://fedorapeople.org/groups/virt/virtio-win/direct-downloads/archive-virtio/virtio-win-0.1.96/virtio-win-0.1.96.iso)
+* [VMware guest tools for ESXi hypervisor](https://packages.vmware.com/tools/esx/6.0p01/windows/x64/VMware-tools-windows-9.10.1-2791197.iso)
 
 ##### Ubuntu
-* Virtual box x
+* Virtual box 4.3.10 or later
 * Windows 2012 R2 image
-* [Windows VirtIO Image 0.1-81](http://alt.fedoraproject.org/pub/alt/virtio-win/stable/virtio-win-0.1-81.iso)
+* [Windows VirtIO Image 0.1.96](https://fedorapeople.org/groups/virt/virtio-win/direct-downloads/archive-virtio/virtio-win-0.1.96/virtio-win-0.1.96.iso)
+* [VMware guest tools for ESXi hypervisor](https://packages.vmware.com/tools/esx/6.0p01/windows/x64/VMware-tools-windows-9.10.1-2791197.iso)
+
+##Hypervisor support
+
+###KVM
+
+-	KVM hypervisor is the virtualization layer in Kernel-based virtual machine. It is an open source hypervisor which can run multiple operating systems as guests, like : BSD, Solaris, Windows, Haiku, Plan9 and others
+-	This is the default hypervisor for glazier.
+-	Needs the --virtio-iso parameter to point to a supported virtio iso (https://fedorapeople.org/groups/virt/virtio-win/direct-downloads/archive-virtio/virtio-win-0.1.96/virtio-win-0.1.96.iso)
+-	This will install the drivers found in virtio-win-VERSION.iso
+-	The generated Windows image format will be qcow2
+
+###ESXi
+
+-	ESXi is a closed source hypervisor, made by VMware
+-	Need to specify "--hypervisor esxi" to create-glazier
+-	The parameter --virtio-iso needs to point to a VMware Guest Tools iso. You can download it here : https://packages.vmware.com/tools/esx/6.0p01/windows/x64/VMware-tools-windows-9.10.1-2791197.iso
+-	This will install the drivers found in VMware-tools-windows-VERSION.iso as well as VMware guest tools
+-	The generated Windows image format will be vmdk
+
+###KVM for ESXi
+
+-	This is for advanced users only. It can be used to generate images compatible with both ESXi and KVM
+-	It installs the VMware drivers but no VMware guest tools. It also installs virtio drivers.
+-	The iso specified with --virtio-iso needs to be a combination of the content of virtio-win-VERSION.iso and VMware-tools-windows-VERSION.iso. The easyest way to do this, is to download both isos, mount them and then copy their content in an empty folder. You should make an iso with the content of that folder. Each operating system has its own tools to accomplish this.
+-	The generated Windows image format will be qcow2
 
 ### Usage
 
@@ -81,6 +111,8 @@ To use the script you need to have the OpenStack environment variables set up:
   * OS_TENANT_ID
   * OS_REGION_NAME
   * OS_AUTH_URL
+
+Optionally, you can also point the environment variable OS_CACERT to a local file containing the SSL certificate. You need to set the value of the variable to the path of the certificate.
 
 Clone the repository:
 
