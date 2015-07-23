@@ -92,7 +92,7 @@ try
       # exitcode 3010 is actually a successful error
       if (($p.ExitCode -ne 0) -and ($p.ExitCode -ne 3010))
       {
-          throw "Installing VMware Guest Tools failed. Path to VMwareGuestTools installer is ${vmwareGuestTools}. Exit code is $p.ExitCode"
+          throw "Installing VMware Guest Tools failed. Path to VMwareGuestTools installer is ${vmwareGuestTools}. Exit code is $($p.ExitCode)"
       }
     }
     
