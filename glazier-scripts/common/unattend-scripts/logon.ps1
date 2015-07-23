@@ -72,15 +72,27 @@ try
        mkdir $infoDir
     }
 
+    # disable monitor/disk/standby/hibernate timeouts
+    & c:\windows\system32\powercfg.exe -change -monitor-timeout-ac 0
+    & c:\windows\system32\powercfg.exe -change -monitor-timeout-dc 0
+    & c:\windows\system32\powercfg.exe -change -disk-timeout-ac 0
+    & c:\windows\system32\powercfg.exe -change -disk-timeout-dc 0
+    & c:\windows\system32\powercfg.exe -change -standby-timeout-ac 0
+    & c:\windows\system32\powercfg.exe -change -standby-timeout-dc 0
+    & c:\windows\system32\powercfg.exe -change -hibernate-timeout-ac 0
+    & c:\windows\system32\powercfg.exe -change -hibernate-timeout-dc 0
+
     # Install vmware guest tools
     $vmwareGuestTools = Join-Path ${resourcesDir} 'VMWare-tools.exe'
     if (Test-Path "$vmwareGuestTools")
     {
       $Host.UI.RawUI.WindowTitle = "Installing vmware guest tools ..."
       $p = Start-Process -Wait -PassThru -FilePath $vmwareGuestTools -ArgumentList '/s /v "/qn REBOOT=R"'
-      if ($p.ExitCode -ne 0)
+
+      # exitcode 3010 is actually a successful error
+      if (($p.ExitCode -ne 0) -and ($p.ExitCode -ne 3010))
       {
-          throw "Installing VMware Guest Tools failed. $vmwareGuestTools"
+          throw "Installing VMware Guest Tools failed. Path to VMwareGuestTools installer is ${vmwareGuestTools}. Exit code is $($p.ExitCode)"
       }
     }
     
