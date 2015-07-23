@@ -30,10 +30,7 @@ function Install-PythonClients{[CmdletBinding()]param()
     Install-VCRedist
     Install-VCCompile
     Install-Python
-    Install-NovaClient
-    Install-GlanceClient
-    Install-SwiftClient
-    Install-NeutronClient
+    Install-PythonPackages
     Write-Output "Done"
 }
 
@@ -134,85 +131,34 @@ function Check-NovaClient{[CmdletBinding()]param()
     return (Test-Path $novaBin)
 }
 
-function Install-NovaClient{[CmdletBinding()]param()
-    if(Check-NovaClient)
+
+function Install-PythonPackages{[CmdletBinding()]param()
+    Write-Output "Installing python packages ..."
+
+    $pythonPackagesFile = Join-Path $currentDir 'python-packages.txt'
+
+    $installProcess = Start-Process -Wait -PassThru -NoNewWindow "${pythonScriptDir}\pip.exe" "install -r ${pythonPackagesFile}"
+    if ($installProcess.ExitCode -ne 0)
     {
-        Write-Output "NovaClient already installed"
-        return
-    }
-    Write-Output "Installing python-novaclient ..."
-    $novaVersion = Get-Dependency "python-novaclient-version"
-    $installProcess = Start-Process -Wait -PassThru -NoNewWindow "${pythonScriptDir}\pip.exe" "install python-novaclient==${novaVersion}"
-    if (($installProcess.ExitCode -ne 0) -or !(Check-NovaClient))
-    {
-        throw 'Installing nova client failed.'
+      throw 'Installing python packages failed.'
     }
 
-    Write-Output "Finished installing nova client"
+    Write-Output "Finished installing python packages"
 }
 
 function Check-GlanceClient{[CmdletBinding()]param()
     return (Test-Path $glanceBin)
 }
 
-function Install-GlanceClient{[CmdletBinding()]param()
-    if(Check-GlanceClient)
-    {
-        Write-Output "GlanceClient already installed"
-        return
-    }
-    Write-Output "Installing python-glanceclient ..."
-    $glanceVersion = Get-Dependency "python-glanceclient-version"
-    $installProcess = Start-Process -Wait -PassThru -NoNewWindow "${pythonScriptDir}\pip.exe" "install python-glanceclient==${glanceVersion}"
-    if (($installProcess.ExitCode -ne 0) -or !(Check-GlanceClient))
-    {
-        throw 'Installing glance client failed.'
-    }
-
-    Write-Output "Finished installing glance client"
-}
-
 function Check-NeutronClient{[CmdletBinding()]param()
     return (Test-Path $neutronBin)
 }
 
-function Install-NeutronClient{[CmdletBinding()]param()
-    if(Check-NeutronClient)
-    {
-        Write-Output "NeutronClient already installed"
-        return
-    }
-    Write-Output "Installing python-neutronclient ..."
-    $neutronVersion = Get-Dependency "python-neutronclient-version"
-    $installProcess = Start-Process -Wait -PassThru -NoNewWindow "${pythonScriptDir}\pip.exe" "install python-neutronclient==${neutronVersion}"
-    if (($installProcess.ExitCode -ne 0) -or !(Check-NeutronClient))
-    {
-        throw 'Installing neutron client failed.'
-    }
-
-    Write-Output "Finished installing neutron client"
-}
 
 function Check-SwiftClient{[CmdletBinding()]param()
     return (Test-Path $swiftBin)
 }
 
-function Install-SwiftClient{[CmdletBinding()]param()
-    if(Check-SwiftClient)
-    {
-        Write-Output "SwiftClient already installed"
-        return
-    }
-    Write-Output "Installing python-swiftclient ..."
-    $swiftVersion = Get-Dependency "python-swiftclient-version"
-    $installProcess = Start-Process -Wait -PassThru -NoNewWindow "${pythonScriptDir}\pip.exe" "install python-swiftclient==${swiftVersion}"
-    if (($installProcess.ExitCode -ne 0) -or !(Check-GlanceClient))
-    {
-        throw 'Installing swift client failed.'
-    }
-
-    Write-Output "Finished installing swift client"
-}
 
 function Create-SwiftContainer{[CmdletBinding()]param($container)
   Write-Verbose "Creating container '${container}' in swift ..."
