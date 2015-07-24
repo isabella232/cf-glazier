@@ -454,9 +454,17 @@ function Update-ImageInfo{[CmdletBinding()]param([string]$imageName, [int]$minDi
 }
 
 # Create an image based on the generated qcow2
-function Create-Image{[CmdletBinding()]param($imageName, $localQCOW2Image)
+function Create-Image{[CmdletBinding()]param($imageName, $localImage, $hypervisor)
   Write-Verbose "Creating image '${imageName}' using glance ..."
-  $createImageProcess = Start-Process -Wait -PassThru -NoNewWindow $glanceBin "$(Get-InsecureFlag) image-create --progress --disk-format qcow2 --container-format bare --file `"${localQCOW2Image}`" --name `"${imageName}`""
+  
+  $diskFormat = 'qcow2'
+  
+  if ($hypervisor -eq 'esxi')
+  {
+	$diskFormat = 'vmdk'
+  }
+  
+  $createImageProcess = Start-Process -Wait -PassThru -NoNewWindow $glanceBin "$(Get-InsecureFlag) image-create --progress --disk-format ${diskFormat} --container-format bare --file `"${localImage}`" --name `"${imageName}`""
   if ($createImageProcess.ExitCode -ne 0)
   {
     throw 'Create image failed.'
@@ -468,7 +476,7 @@ function Create-Image{[CmdletBinding()]param($imageName, $localQCOW2Image)
 }
 
 # Create an image based on a swift url
-function Create-ImageFromSwift{[CmdletBinding()]param($imageName, $container, $object)
+function Create-ImageFromSwift{[CmdletBinding()]param($imageName, $container, $object, $hypervisor)
   try
   {
     $swiftObjectUrl = Get-SwiftToGlanceUrl $container $object
@@ -479,8 +487,15 @@ function Create-ImageFromSwift{[CmdletBinding()]param($imageName, $container, $o
     throw "Could not generate a swift object url for glance: ${errorMessage}"
   }
 
+  $diskFormat = 'qcow2'
+  
+  if ($hypervisor -eq 'esxi')
+  {
+	$diskFormat = 'vmdk'
+  }
+  
   Write-Verbose "Creating image '${imageName}' using glance from swift source '${swiftObjectUrl}' ..."
-  $createImageProcess = Start-Process -Wait -PassThru -NoNewWindow $glanceBin "$(Get-InsecureFlag) image-create --progress --disk-format qcow2 --container-format bare --location `"${swiftObjectUrl}`" --name `"${imageName}`""
+  $createImageProcess = Start-Process -Wait -PassThru -NoNewWindow $glanceBin "$(Get-InsecureFlag) image-create --progress --disk-format ${diskFormat} --container-format bare --location `"${swiftObjectUrl}`" --name `"${imageName}`""
   if ($createImageProcess.ExitCode -ne 0)
   {
     throw 'Create image from swift failed.'

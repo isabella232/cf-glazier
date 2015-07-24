@@ -343,7 +343,7 @@ function New-Image {
 
   if ($SkipInitializeStep -eq $false)
   {
-    Initialize-Image -Qcow2ImagePath $qcow2Path -ImageName $Name -GlazierProfilePath $GlazierProfilePath -OpenStackKeyName $OpenStackKeyName -OpenStackSecurityGroup $OpenStackSecurityGroup -OpenStackNetworkId $OpenStackNetworkId -OpenStackFlavor $OpenStackFlavor -Cleanup:$CleanupWhenDone
+    Initialize-Image -Qcow2ImagePath $qcow2Path -ImageName $Name -GlazierProfilePath $GlazierProfilePath -OpenStackKeyName $OpenStackKeyName -OpenStackSecurityGroup $OpenStackSecurityGroup -OpenStackNetworkId $OpenStackNetworkId -OpenStackFlavor $OpenStackFlavor -Cleanup:$CleanupWhenDone -Hypervisor $Hypervisor
   }
 }
 
@@ -386,7 +386,9 @@ function Initialize-Image {
     [string]$OpenStackFlavor,
     [string]$OpenStackSwiftContainer = 'glazier-images',
     [switch]$Cleanup = $true,
-    [int]$DiskSizeInMB=25000
+    [int]$DiskSizeInMB=25000,
+    [ValidateSet('','kvm','esxi','kvmforesxi')]
+    [string]$Hypervisor='kvm'
   )
 
   if ($Cleanup -eq $false)
@@ -483,15 +485,30 @@ function Initialize-Image {
       Upload-SwiftNative $Qcow2ImagePath $OpenStackSwiftContainer $tempImageName (1024 * 1024 * 50) 10 $false
 
       Write-Output "Creating temporary image ..."
-      Create-ImageFromSwift $tempImageName $OpenStackSwiftContainer $tempImageName
+      Create-ImageFromSwift $tempImageName $OpenStackSwiftContainer $tempImageName $Hypervisor
     }
     else
     {
       Write-Warning "Did not detect an object store, will try to upload image directly to glance ..."
       Write-Output "Creating temporary image ..."
-      Create-Image $tempImageName $Qcow2ImagePath
+      Create-Image $tempImageName $Qcow2ImagePath $Hypervisor
     }
 
+	if ($Hypervisor -eq 'esxi')
+	{
+		Update-ImageProperty $tempImageName 'os_family' 'windows'
+		Update-ImageProperty $tempImageName 'vmware_disktype' 'sparse'
+		Update-ImageProperty $tempImageName 'vmware_adaptertype' 'paraVirtual'
+		Update-ImageProperty $tempImageName 'vmware_ostype' 'windows8Server64Guest'
+		Update-ImageProperty $tempImageName 'hypervisor_type' 'vmware'
+     }
+
+	Update-ImageProperty $tempImageName 'architecture' 'x86_64'
+	Update-ImageProperty $tempImageName 'com.hp__1__os_distro' 'com.microsoft.server'
+	Update-ImageProperty $tempImageName 'com.hp__1__bootable_volume' 'true'
+	Update-ImageProperty $tempImageName 'com.hp__1__image_type' 'disk'	  
+	Update-ImageProperty $tempImageName 'com.hp__1__image_lifecycle' 'active'
+	
     Write-Output "Booting temporary instance ..."
     Boot-VM $tempVMName $tempImageName $OpenStackKeyName $OpenStackSecurityGroup $OpenStackNetworkId $OpenStackFlavor $null
 
@@ -502,11 +519,21 @@ function Initialize-Image {
     Create-VMSnapshot $tempVMName $finalImageName
 
     Write-Output "Updating image metadata ..."
+	if ($Hypervisor -eq 'esxi')
+	{
+		Update-ImageProperty $tempImageName 'os_family' 'windows'
+		Update-ImageProperty $tempImageName 'vmware_disktype' 'sparse'
+		Update-ImageProperty $tempImageName 'vmware_adaptertype' 'paraVirtual'
+		Update-ImageProperty $tempImageName 'vmware_ostype' 'windows8Server64Guest'
+		Update-ImageProperty $tempImageName 'hypervisor_type' 'vmware'
+    }
+	
     Update-ImageProperty $finalImageName 'architecture' 'x86_64'
     Update-ImageProperty $finalImageName 'com.hp__1__os_distro' 'com.microsoft.server'
     Update-ImageProperty $finalImageName 'com.hp__1__bootable_volume' 'true'
     Update-ImageProperty $finalImageName 'com.hp__1__image_type' 'disk'
-
+	Update-ImageProperty $tempImageName 'com.hp__1__image_lifecycle' 'active'
+ 
     Write-Output "Updating image requirements ..."
     $minDiskSize = [int]([Math]::Ceiling(25000 / 1024))
     Update-ImageInfo $finalImageName $mindiskSize 2048
