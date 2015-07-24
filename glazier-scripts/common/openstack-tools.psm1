@@ -454,7 +454,7 @@ function Update-ImageInfo{[CmdletBinding()]param([string]$imageName, [int]$minDi
 }
 
 # Create an image based on the generated qcow2
-function Create-Image{[CmdletBinding()]param($imageName, $localQCOW2Image, $hypervisor)
+function Create-Image{[CmdletBinding()]param($imageName, $localImage, $hypervisor)
   Write-Verbose "Creating image '${imageName}' using glance ..."
   
   $diskFormat = 'qcow2'
@@ -464,7 +464,7 @@ function Create-Image{[CmdletBinding()]param($imageName, $localQCOW2Image, $hype
 	$diskFormat = 'vmdk'
   }
   
-  $createImageProcess = Start-Process -Wait -PassThru -NoNewWindow $glanceBin "$(Get-InsecureFlag) image-create --progress --disk-format ${diskFormat} --container-format bare --file `"${localQCOW2Image}`" --name `"${imageName}`""
+  $createImageProcess = Start-Process -Wait -PassThru -NoNewWindow $glanceBin "$(Get-InsecureFlag) image-create --progress --disk-format ${diskFormat} --container-format bare --file `"${localImage}`" --name `"${imageName}`""
   if ($createImageProcess.ExitCode -ne 0)
   {
     throw 'Create image failed.'
