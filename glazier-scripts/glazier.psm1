@@ -57,7 +57,8 @@ function New-Image {
     [string]$OpenStackNetworkId,
     [string]$OpenStackFlavor,
     [ValidateSet('','kvm','esxi','kvmforesxi')]
-    [string]$Hypervisor='kvm'
+    [string]$Hypervisor='kvm',
+    [string]$OpenStackSwiftContainer='glazier-images'
   )
 
   $isVerbose = [bool]$PSBoundParameters["Verbose"]
@@ -343,7 +344,7 @@ function New-Image {
 
   if ($SkipInitializeStep -eq $false)
   {
-    Initialize-Image -Qcow2ImagePath $qcow2Path -ImageName $Name -GlazierProfilePath $GlazierProfilePath -OpenStackKeyName $OpenStackKeyName -OpenStackSecurityGroup $OpenStackSecurityGroup -OpenStackNetworkId $OpenStackNetworkId -OpenStackFlavor $OpenStackFlavor -Cleanup:$CleanupWhenDone -Hypervisor $Hypervisor
+    Initialize-Image -Qcow2ImagePath $qcow2Path -ImageName $Name -GlazierProfilePath $GlazierProfilePath -OpenStackKeyName $OpenStackKeyName -OpenStackSecurityGroup $OpenStackSecurityGroup -OpenStackNetworkId $OpenStackNetworkId -OpenStackFlavor $OpenStackFlavor -Cleanup:$CleanupWhenDone -Hypervisor $Hypervisor -OpenStackSwiftContainer $OpenStackSwiftContainer
   }
 }
 
@@ -466,8 +467,17 @@ function Initialize-Image {
     Write-Verbose "Temp image name will be ${tempImageName}"
     $finalImageName = "${ImageName}-$($glazierProfile.Name)-${timestamp}"
     Write-Verbose "Final image name will be ${finalImageName}"
-    $OpenStackSwiftContainer = "${OpenStackSwiftContainer}-${tempImageName}"
-    Write-Verbose "Will be using ${OpenStackSwiftContainer} as a swift container name"
+    
+    if ([string]::IsNullOrWhiteSpace($OpenStackSwiftContainer) -eq $false)
+    {
+      $OpenStackSwiftContainer = "${OpenStackSwiftContainer}-${tempImageName}"
+      Write-Verbose "Will be using ${OpenStackSwiftContainer} as a swift container name"
+    }
+    else
+    {
+      Write-Warning "The -OpenStackSwiftContainer parameter was explicitly set to an empty value. Swift upload strategy will be skipped."
+    }
+    
     
     Set-OpenStackVars
   
@@ -476,7 +486,7 @@ function Initialize-Image {
     Write-Output "Checking boot image parameters ..."
     Validate-OSParams $OpenStackKeyName $OpenStackSecurityGroup $OpenStackNetworkId $OpenStackFlavor
 
-    if (Validate-SwiftExistence)
+    if (([string]::IsNullOrWhiteSpace($OpenStackSwiftContainer) -eq $false) -and (Validate-SwiftExistence))
     {
       Write-Output "Creating a container on swift ..."
       Create-SwiftContainer $OpenStackSwiftContainer
@@ -568,7 +578,7 @@ function Initialize-Image {
       Write-Warning "Failed to delete temp image '${tempImageName}' (the image probably doesn't exist): ${errorMessage}"
     }
 
-    if (Validate-SwiftExistence)
+    if (([string]::IsNullOrWhiteSpace($OpenStackSwiftContainer) -eq $false) -and (Validate-SwiftExistence))
     {
       try
       {
