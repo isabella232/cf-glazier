@@ -27,11 +27,25 @@ function New-Image {
   .PARAMETER Workspace
       Location for the working directory
   .PARAMETER CleanupWhenDone
-      Clean up created files after task is finished
+      Clean up created files after task is finished. By default this is true
   .PARAMETER ProductKey
       Windows product key
   .PARAMETER Proxy
       Proxy address used inside VM for Windows Updates
+  .PARAMETER SkipInitializeStep
+      If this flag is set, the image initialization step will be skipped. By default, the Initialize-Image step is automatically run after New-Image completes
+  .PARAMETER OpenStackKeyName
+      Name of the key
+  .PARAMETER OpenStackSecurityGroup
+      Comma separated list of security group names
+  .PARAMETER OpenStackNetworkId
+      UUID of the network
+  .PARAMETER OpenStackFlavor
+      Name or ID of the flavor
+  .PARAMETER Hypervisor
+      Specifies the hypervisor to use. Valid options are: 'kvm' (default), 'esxi' or 'kvmforesxi'
+  .PARAMETER OpenStackSwiftContainer
+      If this is explicitly set to an empty value, upload to swift is bypassed, even if a swift store is detected. By default this is 'glazier-images'
   .NOTES
       Author: Hewlett-Packard Development Company
       Date:   April 8, 2015
@@ -359,14 +373,24 @@ function Initialize-Image {
       Path to a qcow2 image created using New-Image
   .PARAMETER ImageName
       Name for the image being created
+  .PARAMETER GlazierProfilePath
+      Path to the glazier profile directory
   .PARAMETER OpenStackKeyName
       OpenStack key name
   .PARAMETER OpenStackSecurityGroup
       OpenStack security group
   .PARAMETER OpenStackNetworkId
-      OpenStack network id
+      OpenStack network ID
   .PARAMETER OpenStackFlavor
       OpenStack VM flavor
+  .PARAMETER OpenStackSwiftContainer
+      If this is explicitly set to an empty value, upload to swift is bypassed, even if a swift store is detected. By default this is 'glazier-images'
+  .PARAMETER Cleanup
+      Cleanup the workdir after image creation. By default this is true
+  .PARAMETER DiskSizeInMB
+      Specifies the disk size for the windows image
+  .PARAMETER Hypervisor
+      Specifies the hypervisor to use. Valid options are: 'kvm' (default), 'esxi' or 'kvmforesxi'
   .NOTES
       Author: Hewlett-Packard Development Company
       Date:   April 8, 2015
@@ -608,17 +632,17 @@ function Push-Resources {
       Path to the glazier profile directory
   .PARAMETER VmName
       Name of the VM to boot
-  .PARAMETER KeyName
+  .PARAMETER OpenStackKeyName
       Key name of ssh keypair
-  .PARAMETER SecurityGroup
+  .PARAMETER OpenStackSecurityGroup
       Comma separated list of security group names
-  .PARAMETER NetworkId
+  .PARAMETER OpenStackNetworkId
       UUID of the network
   .PARAMETER Image
       Name or ID of the image used to boot the VM
   .PARAMETER SnapshotImageName
       Name of Snapshot to be created
-  .PARAMETER Flavor
+  .PARAMETER OpenStackFlavor
       Name or ID of the flavor
   .PARAMETER HttpProxy
       Http host address proxy used for downloading files
