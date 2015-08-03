@@ -181,9 +181,9 @@ function New-Image {
       "esxi" { $imageExtension = 'vmdk' }
     }
     
-    $qcow2FileName = "$(Convert-ImageNameToFileName $Name)-$($glazierProfile.Name)-${timestamp}.${imageExtension}"
+    $qcow2FileName = "$(Convert-ImageNameToFileName $Name)-$($glazierProfile.Name)-${Hypervisor}-${timestamp}.${imageExtension}"
     Write-Verbose "image filename will be ${qcow2FileName}"
-    $vhdFileName = "$(Convert-ImageNameToFileName $Name)-$($glazierProfile.Name)-${timestamp}.vhd"
+    $vhdFileName = "$(Convert-ImageNameToFileName $Name)-$($glazierProfile.Name)-${Hypervisor}-${timestamp}.vhd"
     Write-Verbose "vhd filename will be ${vhdFileName}"
     $workDir = Join-Path $Workspace $timestamp
     Write-Verbose "Will be working in directory ${workDir}"
@@ -461,11 +461,11 @@ function Initialize-Image {
     
     $timestamp = Get-Date -f 'yyyyMMddHHmmss'
 
-    $tempVMName = "${ImageName}-$($glazierProfile.Name)-glazier-temp-instance-DO-NOT-USE-${timestamp}"
+    $tempVMName = "${ImageName}-$($glazierProfile.Name)-glazier-temp-instance-DO-NOT-USE-${Hypervisor}-${timestamp}"
     Write-Verbose "Temp instance name will be ${tempVMName}"
-    $tempImageName = "${ImageName}-$($glazierProfile.Name)-glazier-temp-image-DO-NOT-USE-${timestamp}"
+    $tempImageName = "${ImageName}-$($glazierProfile.Name)-glazier-temp-image-DO-NOT-USE-${Hypervisor}-${timestamp}"
     Write-Verbose "Temp image name will be ${tempImageName}"
-    $finalImageName = "${ImageName}-$($glazierProfile.Name)-${timestamp}"
+    $finalImageName = "${ImageName}-$($glazierProfile.Name)-${Hypervisor}-${timestamp}"
     Write-Verbose "Final image name will be ${finalImageName}"
     
     if ([string]::IsNullOrWhiteSpace($OpenStackSwiftContainer) -eq $false)
