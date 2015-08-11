@@ -46,8 +46,8 @@ if (!(Verify-PythonClientsInstallation))
 }
 
 Set-OpenStackVars
-Check-HostArgsOpenStackParams
 Set-SystemTime
+Check-HostArgsOpenStackParams
 
 echo @"
 
