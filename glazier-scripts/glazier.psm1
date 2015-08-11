@@ -71,7 +71,7 @@ function New-Image {
     [string]$OpenStackNetworkId,
     [string]$OpenStackFlavor,
     [ValidateSet('','kvm','esxi','kvmforesxi')]
-    [string]$Hypervisor='kvm',
+    [string]$Hypervisor='',
     [string]$OpenStackSwiftContainer='glazier-images'
   )
 
@@ -413,7 +413,7 @@ function Initialize-Image {
     [switch]$Cleanup = $true,
     [int]$DiskSizeInMB=25000,
     [ValidateSet('','kvm','esxi','kvmforesxi')]
-    [string]$Hypervisor='kvm'
+    [string]$Hypervisor=''
   )
 
   if ($Cleanup -eq $false)
@@ -478,6 +478,15 @@ function Initialize-Image {
     }
   }
 
+  if ([string]::IsNullOrWhitespace($Hypervisor))
+  {
+    $Hypervisor = Get-Hypervisor
+    if ([string]::IsNullOrWhitespace($Hypervisor))
+      {
+        throw "Hypervisor is not defined"
+      }
+  }
+  
   try
   {
     Write-Output 'Getting profile information ...'
