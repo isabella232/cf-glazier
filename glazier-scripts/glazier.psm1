@@ -790,7 +790,7 @@ function Download-File{[CmdletBinding()]param($url, $targetFile, $proxy)
     }
   }
 
-  Write-Progress -activity "Finished downloading file '$($url.split('/') | Select -Last 1)'" -status "Done"
+  Write-Progress -activity "Finished downloading file '$($url.split('/') | Select -Last 1)'" -Completed -status "Done"
   $targetStream.Flush()
   $targetStream.Close()
   $targetStream.Dispose()

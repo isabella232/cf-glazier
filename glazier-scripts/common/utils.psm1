@@ -95,7 +95,7 @@ function Download-File{[CmdletBinding()]param($url, $targetFile)
       }
     }
 
-    Write-Progress -activity "Downloading file '$($url.split('/') | Select -Last 1)'" -status "Done"
+    Write-Progress -activity "Downloading file '$($url.split('/') | Select -Last 1)'" -Completed -status "Done"
   }
   finally {
     if ($targetStream -ne $null) {
