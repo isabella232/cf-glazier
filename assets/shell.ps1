@@ -16,23 +16,6 @@ function Check-HostArgsOpenStackParams{[CmdletBinding()]param()
     Validate-OSParams $openStackKey $openStackSecGroup $openStackNetworkId $openStackFlavor
 }
 
-function Set-SystemTime{[CmdletBinding()]param()
-  try
-  {
-    $dateResponse = (Invoke-WebRequest -UseBasicParsing $env:OS_AUTH_URL)
-    $dateFromKeystone = $dateResponse.Headers["Date"]
-  }
-  catch
-  {
-    $dateFromKeystone = $_.Exception.Response.Headers["Date"]
-  }
-  
-  Write-Host "Setting system date to '${dateFromKeystone}' (retrieved from keystone)"
-  
-  Set-Date -Date $dateFromKeystone
-}
-
-
 Set-SystemProxy -Verbose
 
 if ((Verify-QemuImg) -eq $false)
@@ -46,8 +29,8 @@ if (!(Verify-PythonClientsInstallation))
 }
 
 Set-OpenStackVars
-Set-SystemTime
 Check-HostArgsOpenStackParams
+
 
 echo @"
 

@@ -1221,22 +1221,19 @@ function run_virtualbox()
 	[ ! -z "${virtio_iso}" ] && run 2 VBoxManage storageattach ${vmname} --storagectl "SATA" --port 1 --type dvddrive --medium ${virtio_iso}
 	[ ! -z "${sqlserver_iso}" ] && run 2 VBoxManage storageattach ${vmname} --storagectl "SATA" --port 2 --type dvddrive --medium ${sqlserver_iso}
 
-	# mount shared folder
-#	run 2 VBoxManage sharedfolder add ${vmname} --name output --hostpath ${vmpath}/output --automount
-
 	run 2 VBoxManage modifyvm ${vmname} --boot1 disk
 	run 2 VBoxManage modifyvm ${vmname} --boot2 dvd
 	run 2 VBoxManage modifyvm ${vmname} --boot3 none
 	run 2 VBoxManage modifyvm ${vmname} --boot4 none
 
-	info 3 "Binding eth0 to the virtual machine (NAT)"
+	run 2 VBoxManage modifyvm ${vmname} --rtcuseutc on
+	run 2 VBoxManage modifyvm ${vmname} --biossystemtimeoffset 0
+
 	run 2 VBoxManage modifyvm ${vmname} --nic1 nat --cableconnected1 on
 	run 2 VBoxManage modifyvm ${vmname} --memory 4096
 	run 2 VBoxManage modifyvm ${vmname} --clipboard bidirectional
 
 	run 2 VBoxManage startvm ${vmname}
-
-	#run 2 VBoxManage guestcontrol  ${vmname} updateadditions --source /Applications/VirtualBox.app/Contents/MacOS/VBoxGuestAdditions.iso --verbose
 }
 
 
